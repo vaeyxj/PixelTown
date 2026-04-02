@@ -1,51 +1,79 @@
 import { useRef, useEffect } from 'react'
 import { Application } from 'pixi.js'
-import { createOfficeMap } from '../game/mapRenderer'
+import { createGameEngine, type GameCallbacks, type GameEngine } from '../game/engine'
 
-export function PixelCanvas() {
+interface Props {
+  readonly started: boolean
+  readonly callbacks: GameCallbacks
+}
+
+export function PixelCanvas({ started, callbacks }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const engineRef = useRef<GameEngine | null>(null)
   const appRef = useRef<Application | null>(null)
 
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
 
-    let destroyed = false
-    let mapCleanup: (() => void) | undefined
+    let cancelled = false
 
     const init = async () => {
       const app = new Application()
+      const w = el.clientWidth || window.innerWidth
+      const h = el.clientHeight || window.innerHeight
+
       await app.init({
-        resizeTo: el,
-        background: 0x1a1a2e,
+        width: w,
+        height: h,
+        background: 0x0f1923,
         antialias: false,
         resolution: window.devicePixelRatio,
         autoDensity: true,
       })
 
-      if (destroyed) {
-        app.destroy(true)
+      if (cancelled) {
+        app.destroy(true, { children: true })
         return
       }
 
       el.appendChild(app.canvas as HTMLCanvasElement)
       appRef.current = app
 
-      const { destroy } = createOfficeMap(app)
-      mapCleanup = destroy
+      const resizeObserver = new ResizeObserver(() => {
+        const newW = el.clientWidth
+        const newH = el.clientHeight
+        if (newW > 0 && newH > 0) {
+          app.renderer.resize(newW, newH)
+        }
+      })
+      resizeObserver.observe(el)
+
+      try {
+        engineRef.current = createGameEngine(app, callbacks)
+      } catch (err) {
+        console.error('Engine init failed:', err)
+      }
     }
 
     init()
 
     return () => {
-      destroyed = true
-      mapCleanup?.()
+      cancelled = true
+      engineRef.current?.destroy()
+      engineRef.current = null
       if (appRef.current) {
-        appRef.current.destroy(true)
+        appRef.current.destroy(true, { children: true })
         appRef.current = null
       }
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (started && engineRef.current) {
+      engineRef.current.startEntryAnimation()
+    }
+  }, [started])
 
   return (
     <div
@@ -54,7 +82,6 @@ export function PixelCanvas() {
         width: '100%',
         height: '100%',
         overflow: 'hidden',
-        cursor: 'grab',
         imageRendering: 'pixelated',
       }}
     />

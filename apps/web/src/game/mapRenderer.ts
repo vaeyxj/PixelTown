@@ -1,356 +1,305 @@
-import {
-  Application,
-  Container,
-  Graphics,
-  Text,
-  TextStyle,
-  FederatedPointerEvent,
-} from 'pixi.js'
+/**
+ * 地图渲染器 - 绘制地板、家具、墙壁、装饰
+ * 不再管理摄像机和交互，只负责往 worldContainer 里添加图层
+ */
+import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js'
 import { MAP_ZONES, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, type MapZone } from './mapData'
+import {
+  drawDeskPair,
+  drawMeetingRoom,
+  drawPlant,
+  drawLargePlant,
+  drawWaterCooler,
+  drawCoffeeMachine,
+  drawToiletStall,
+  drawSink,
+  drawCorridorFloor,
+  drawWoodFloor,
+  drawCarpetFloor,
+} from './pixelSprites'
 
-const FLOOR_COLOR = 0xe8e0d0
-const WALL_COLOR = 0x8a7a6a
-const GRID_COLOR = 0xd8d0c0
-
-/** Draw a pixel-art desk pattern inside a workstation zone */
-function drawDeskPattern(g: Graphics, zone: MapZone): void {
+function fillWorkstationZone(g: Graphics, zone: MapZone): void {
   const px = zone.x * TILE_SIZE
   const py = zone.y * TILE_SIZE
   const pw = zone.width * TILE_SIZE
   const ph = zone.height * TILE_SIZE
 
-  const deskW = 10
-  const deskH = 6
-  const gapX = 14
-  const gapY = 12
-  const padding = 8
+  drawWoodFloor(g, px + 2, py + 2, pw - 4, ph - 4)
 
-  const cols = Math.floor((pw - padding * 2) / gapX)
-  const rows = Math.floor((ph - padding * 2) / gapY)
+  const gapX = 26
+  const gapY = 52
+  const padX = 10
+  const padY = 8
+  const cols = Math.floor((pw - padX * 2) / gapX)
+  const rows = Math.floor((ph - padY * 2) / gapY)
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
-      const dx = px + padding + col * gapX
-      const dy = py + padding + row * gapY
-      // Desk surface
-      g.rect(dx, dy, deskW, deskH)
-      g.fill({ color: 0xdad0c0 })
-      g.stroke({ color: 0xb0a090, width: 1 })
-      // Chair (small dot)
-      g.circle(dx + deskW / 2, dy + deskH + 2, 2)
-      g.fill({ color: 0x5a5a5a })
+      const dx = px + padX + col * gapX
+      const dy = py + padY + row * gapY
+      if (dy + 48 < py + ph - 4) {
+        drawDeskPair(g, dx, dy)
+      }
     }
   }
 }
 
-/** Draw a pixel-art meeting table inside a meeting room */
-function drawMeetingTable(g: Graphics, zone: MapZone): void {
+function fillRestroomZone(g: Graphics, zone: MapZone): void {
   const px = zone.x * TILE_SIZE
   const py = zone.y * TILE_SIZE
   const pw = zone.width * TILE_SIZE
   const ph = zone.height * TILE_SIZE
 
-  const tableW = Math.min(pw - 16, 40)
-  const tableH = Math.min(ph - 12, 20)
-  const tx = px + (pw - tableW) / 2
-  const ty = py + (ph - tableH) / 2
-
-  // Table
-  g.roundRect(tx, ty, tableW, tableH, 3)
-  g.fill({ color: 0x6a5a4a })
-  g.stroke({ color: 0x4a3a2a, width: 1 })
-
-  // Chairs around table
-  const chairSize = 3
-  const chairGap = 10
-  // Top and bottom chairs
-  const topChairs = Math.max(1, Math.floor(tableW / chairGap))
-  for (let i = 0; i < topChairs; i++) {
-    const cx = tx + 4 + i * chairGap
-    g.circle(cx, ty - 4, chairSize)
-    g.fill({ color: 0x4a6a8a })
-    g.circle(cx, ty + tableH + 4, chairSize)
-    g.fill({ color: 0x4a6a8a })
-  }
-}
-
-/** Draw restroom icon */
-function drawRestroomIcon(g: Graphics, zone: MapZone): void {
-  const px = zone.x * TILE_SIZE
-  const py = zone.y * TILE_SIZE
-  const pw = zone.width * TILE_SIZE
-  const ph = zone.height * TILE_SIZE
-  const cx = px + pw / 2
-  const cy = py + ph / 2
-
-  // Tile pattern
-  const tileGap = 8
-  for (let tx = px + 2; tx < px + pw - 2; tx += tileGap) {
-    for (let ty = py + 2; ty < py + ph - 2; ty += tileGap) {
-      g.rect(tx, ty, tileGap - 1, tileGap - 1)
-      g.fill({ color: 0x9ac4e0 })
+  const tileSize = 8
+  for (let x = 0; x < pw; x += tileSize) {
+    for (let y = 0; y < ph; y += tileSize) {
+      const isLight = ((x + y) / tileSize) % 2 === 0
+      g.rect(px + x, py + y, tileSize, tileSize).fill(isLight ? 0xc8dae8 : 0xb8cad8)
     }
   }
-
-  // Simple person icon
-  g.circle(cx - 8, cy - 8, 4)
-  g.fill({ color: 0x2a4a6a })
-  g.rect(cx - 12, cy - 3, 8, 12)
-  g.fill({ color: 0x2a4a6a })
-
-  g.circle(cx + 8, cy - 8, 4)
-  g.fill({ color: 0x8a2a4a })
-  g.rect(cx + 4, cy - 3, 8, 12)
-  g.fill({ color: 0x8a2a4a })
-  // Skirt triangle for female icon
-  g.moveTo(cx + 4, cy + 2)
-  g.lineTo(cx + 12, cy + 9)
-  g.lineTo(cx + 4, cy + 9)
-  g.closePath()
-  g.fill({ color: 0x8a2a4a })
+  const stallCount = Math.max(1, Math.floor(pw / 20))
+  for (let i = 0; i < stallCount; i++) {
+    drawToiletStall(g, px + 4 + i * 18, py + 4)
+  }
+  if (ph > 40) {
+    const sinkCount = Math.max(1, Math.floor(pw / 20))
+    for (let i = 0; i < sinkCount; i++) {
+      drawSink(g, px + 4 + i * 18, py + ph - 20)
+    }
+  }
 }
 
-/** Draw exit arrow */
-function drawExitArrow(g: Graphics, zone: MapZone): void {
+function fillStorageZone(g: Graphics, zone: MapZone): void {
   const px = zone.x * TILE_SIZE
   const py = zone.y * TILE_SIZE
   const pw = zone.width * TILE_SIZE
   const ph = zone.height * TILE_SIZE
-  const cx = px + pw / 2
-  const cy = py + ph / 2
+  g.rect(px, py, pw, ph).fill(0xc0b8a8)
 
-  // Arrow pointing left
-  g.moveTo(cx - 12, cy)
-  g.lineTo(cx - 2, cy - 6)
-  g.lineTo(cx - 2, cy - 2)
-  g.lineTo(cx + 12, cy - 2)
-  g.lineTo(cx + 12, cy + 2)
-  g.lineTo(cx - 2, cy + 2)
-  g.lineTo(cx - 2, cy + 6)
-  g.closePath()
-  g.fill({ color: 0xffffff })
+  for (let y = 6; y < ph - 10; y += 14) {
+    for (let x = 6; x < pw - 10; x += 26) {
+      const sx = px + x
+      const sy = py + y
+      g.rect(sx, sy, 20, 8).fill(0x8a7a6a)
+      g.rect(sx, sy, 20, 2).fill(0x9a8a7a)
+      g.rect(sx + 2, sy - 4, 6, 4).fill(0xc4a468)
+      g.rect(sx + 10, sy - 6, 8, 6).fill(0xb49458)
+    }
+  }
 }
 
-export function createOfficeMap(app: Application): {
-  container: Container
-  destroy: () => void
-} {
-  const worldContainer = new Container()
-  worldContainer.label = 'world'
+function fillExitZone(g: Graphics, zone: MapZone): void {
+  const px = zone.x * TILE_SIZE
+  const py = zone.y * TILE_SIZE
+  const pw = zone.width * TILE_SIZE
+  const ph = zone.height * TILE_SIZE
+  drawCorridorFloor(g, px, py, pw, ph)
 
-  // -- Floor background --
+  const cx = px + pw / 2
+  const cy = py + ph / 2
+  g.rect(cx - 16, cy - 6, 32, 12).fill(0x2a8a3a)
+  g.rect(cx - 16, cy - 6, 32, 12).stroke({ color: 0x1a6a2a, width: 1 })
+  g.moveTo(cx - 10, cy).lineTo(cx - 4, cy - 4).lineTo(cx - 4, cy - 1)
+    .lineTo(cx + 8, cy - 1).lineTo(cx + 8, cy + 1).lineTo(cx - 4, cy + 1)
+    .lineTo(cx - 4, cy + 4).closePath().fill(0xffffff)
+}
+
+function fillServiceZone(g: Graphics, zone: MapZone): void {
+  const px = zone.x * TILE_SIZE
+  const py = zone.y * TILE_SIZE
+  const pw = zone.width * TILE_SIZE
+  const ph = zone.height * TILE_SIZE
+  drawCarpetFloor(g, px, py, pw, ph)
+  g.rect(px + 8, py + ph / 2 - 6, pw - 20, 12).fill(0xb8a890)
+  g.rect(px + 8, py + ph / 2 - 6, pw - 20, 3).fill(0xc8b8a0)
+}
+
+function drawCorridors(g: Graphics): void {
+  const T = TILE_SIZE
+  const cw = 3 * T
+  drawCorridorFloor(g, 1 * T, 11 * T, 90 * T, cw)
+  drawCorridorFloor(g, 1 * T, 30 * T, 90 * T, cw)
+  drawCorridorFloor(g, 1 * T, 52 * T, 90 * T, cw)
+  drawCorridorFloor(g, 7 * T, 1 * T, cw, 54 * T)
+  drawCorridorFloor(g, 21 * T, 1 * T, cw, 54 * T)
+  drawCorridorFloor(g, 37 * T, 1 * T, cw, 54 * T)
+  drawCorridorFloor(g, 57 * T, 1 * T, cw, 54 * T)
+  drawCorridorFloor(g, 60 * T, 1 * T, cw, 54 * T)
+}
+
+function drawWalls(g: Graphics, zone: MapZone): void {
+  const px = zone.x * TILE_SIZE
+  const py = zone.y * TILE_SIZE
+  const pw = zone.width * TILE_SIZE
+  const ph = zone.height * TILE_SIZE
+
+  if (zone.type === 'meeting_room' || zone.type === 'restroom' || zone.type === 'storage' || zone.type === 'service') {
+    g.rect(px, py, pw, 4).fill(0x9a8a7a)
+    g.rect(px, py, 3, ph).fill(0xb8a890)
+    g.rect(px + pw - 3, py, 3, ph).fill(0xb8a890)
+    g.rect(px, py + ph - 3, pw, 3).fill(0xa89880)
+    // 门
+    g.rect(px + pw / 2 - 8, py + ph - 4, 16, 4).fill(0xa09080)
+    g.rect(px + pw / 2 - 8, py + ph - 4, 16, 1).fill(0x7a6a5a)
+    g.rect(px + pw / 2 + 4, py + ph - 3, 2, 2).fill(0xd4a840)
+  }
+}
+
+function placeDecorations(g: Graphics): void {
+  const T = TILE_SIZE
+  const plants = [
+    [8, 12], [18, 12], [19, 30], [8, 30], [8, 42],
+    [37, 12], [45, 12], [60, 12], [37, 30], [58, 30],
+    [70, 28], [85, 28], [22, 50], [58, 50], [88, 36],
+  ]
+  for (const [tx, ty] of plants) {
+    if (tx % 3 === 0) drawLargePlant(g, tx * T, ty * T)
+    else drawPlant(g, tx * T, ty * T)
+  }
+
+  const coolers = [[7, 20], [40, 12], [60, 28], [28, 50]]
+  for (const [tx, ty] of coolers) drawWaterCooler(g, tx * T, ty * T)
+
+  const coffees = [[15, 12], [55, 12], [20, 42]]
+  for (const [tx, ty] of coffees) drawCoffeeMachine(g, tx * T, ty * T)
+}
+
+/** 在 worldContainer 中创建所有地图图层，返回 destroy 函数 */
+export function createOfficeMap(
+  app: Application,
+  worldContainer: Container,
+): { destroy: () => void } {
+  const mw = MAP_WIDTH * TILE_SIZE
+  const mh = MAP_HEIGHT * TILE_SIZE
+
+  // 1. 背景
   const floor = new Graphics()
-  floor.rect(0, 0, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE)
-  floor.fill({ color: FLOOR_COLOR })
+  floor.rect(0, 0, mw, mh).fill(0xd8d0c0)
   worldContainer.addChild(floor)
 
-  // -- Grid lines (subtle) --
-  const grid = new Graphics()
-  for (let x = 0; x <= MAP_WIDTH; x++) {
-    grid.moveTo(x * TILE_SIZE, 0)
-    grid.lineTo(x * TILE_SIZE, MAP_HEIGHT * TILE_SIZE)
-  }
-  for (let y = 0; y <= MAP_HEIGHT; y++) {
-    grid.moveTo(0, y * TILE_SIZE)
-    grid.lineTo(MAP_WIDTH * TILE_SIZE, y * TILE_SIZE)
-  }
-  grid.stroke({ color: GRID_COLOR, width: 0.5, alpha: 0.3 })
-  worldContainer.addChild(grid)
+  // 2. 走廊
+  const corridors = new Graphics()
+  drawCorridors(corridors)
+  worldContainer.addChild(corridors)
 
-  // -- Outer walls --
-  const walls = new Graphics()
-  walls.rect(0, 0, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE)
-  walls.stroke({ color: WALL_COLOR, width: 4 })
-  worldContainer.addChild(walls)
-
-  // -- Zones --
-  const zoneGraphics = new Graphics()
-  const labelContainer = new Container()
-  labelContainer.label = 'labels'
-
-  const tooltipText = new Text({
-    text: '',
-    style: new TextStyle({
-      fontFamily: '"Press Start 2P", "Courier New", monospace',
-      fontSize: 11,
-      fill: 0xffffff,
-      stroke: { color: 0x000000, width: 3 },
-    }),
-  })
-  tooltipText.visible = false
-  tooltipText.zIndex = 1000
-
+  // 3. 区域
+  const zones = new Graphics()
   for (const zone of MAP_ZONES) {
     const px = zone.x * TILE_SIZE
     const py = zone.y * TILE_SIZE
     const pw = zone.width * TILE_SIZE
     const ph = zone.height * TILE_SIZE
 
-    // Zone fill
-    zoneGraphics.rect(px, py, pw, ph)
-    zoneGraphics.fill({ color: zone.color })
-    zoneGraphics.stroke({ color: zone.borderColor, width: 2 })
-
-    // Draw interior details based on type
-    if (zone.type === 'workstation' || zone.type === 'shared_desk') {
-      drawDeskPattern(zoneGraphics, zone)
-    } else if (zone.type === 'meeting_room') {
-      drawMeetingTable(zoneGraphics, zone)
-    } else if (zone.type === 'restroom') {
-      drawRestroomIcon(zoneGraphics, zone)
-    } else if (zone.type === 'exit') {
-      drawExitArrow(zoneGraphics, zone)
+    switch (zone.type) {
+      case 'workstation':
+      case 'shared_desk':
+        fillWorkstationZone(zones, zone)
+        break
+      case 'meeting_room':
+        drawMeetingRoom(zones, px + 3, py + 5, pw - 6, ph - 8)
+        break
+      case 'restroom':
+        fillRestroomZone(zones, zone)
+        break
+      case 'storage':
+        fillStorageZone(zones, zone)
+        break
+      case 'exit':
+        fillExitZone(zones, zone)
+        break
+      case 'service':
+        fillServiceZone(zones, zone)
+        break
     }
+  }
+  worldContainer.addChild(zones)
 
-    // Zone label
+  // 4. 墙壁
+  const walls = new Graphics()
+  for (const zone of MAP_ZONES) drawWalls(walls, zone)
+  walls.rect(0, 0, 4, mh).fill(0xb8a890)
+  walls.rect(mw - 4, 0, 4, mh).fill(0xb8a890)
+  walls.rect(0, 0, mw, 6).fill(0x9a8a7a)
+  walls.rect(0, mh - 4, mw, 4).fill(0xa89880)
+  worldContainer.addChild(walls)
+
+  // 5. 装饰
+  const decos = new Graphics()
+  placeDecorations(decos)
+  worldContainer.addChild(decos)
+
+  // 6. 标签
+  const labels = new Container()
+  for (const zone of MAP_ZONES) {
+    const px = zone.x * TILE_SIZE
+    const py = zone.y * TILE_SIZE
+    const pw = zone.width * TILE_SIZE
     const displayName = zone.label ?? zone.name
-    const fontSize = zone.type === 'meeting_room' ? 9 : 10
+    const fontSize = zone.type === 'meeting_room' ? 7 : 8
+
     const label = new Text({
       text: displayName,
       style: new TextStyle({
         fontFamily: '"Microsoft YaHei", "PingFang SC", sans-serif',
         fontSize,
         fill: 0xffffff,
-        stroke: { color: 0x000000, width: 2 },
+        stroke: { color: 0x000000, width: 3 },
         align: 'center',
         wordWrap: true,
-        wordWrapWidth: pw - 4,
+        wordWrapWidth: pw - 8,
+        lineHeight: fontSize + 3,
       }),
     })
-    label.anchor.set(0.5, 0.5)
+    label.anchor.set(0.5, 0)
     label.x = px + pw / 2
-    label.y = py + ph / 2
-    labelContainer.addChild(label)
+    label.y = py + 5
+    labels.addChild(label)
   }
+  worldContainer.addChild(labels)
 
-  worldContainer.addChild(zoneGraphics)
-  worldContainer.addChild(labelContainer)
+  // 7. 显示器动画
+  const animLayer = new Graphics()
+  worldContainer.addChild(animLayer)
 
-  // -- Title --
-  const title = new Text({
-    text: 'D区 共417个有效工位',
-    style: new TextStyle({
-      fontFamily: '"Microsoft YaHei", "PingFang SC", sans-serif',
-      fontSize: 16,
-      fontWeight: 'bold',
-      fill: 0x2a2a2a,
-      stroke: { color: 0xffffff, width: 3 },
-    }),
-  })
-  title.x = 12
-  title.y = 4
-  worldContainer.addChild(title)
-
-  // -- Interaction state --
-  let dragging = false
-  let dragStartX = 0
-  let dragStartY = 0
-  let dragContainerStartX = 0
-  let dragContainerStartY = 0
-
-  // -- Tooltip on hover --
-  worldContainer.addChild(tooltipText)
-  worldContainer.eventMode = 'static'
-  worldContainer.hitArea = {
-    contains: () => true,
-  }
-
-  worldContainer.on('pointermove', (e: FederatedPointerEvent) => {
-    if (dragging) {
-      tooltipText.visible = false
-      return
+  interface Light { x: number; y: number; phase: number }
+  const lights: Light[] = []
+  for (const zone of MAP_ZONES) {
+    if (zone.type !== 'workstation' && zone.type !== 'shared_desk') continue
+    const zpx = zone.x * TILE_SIZE
+    const zpy = zone.y * TILE_SIZE
+    const pw = zone.width * TILE_SIZE
+    const ph = zone.height * TILE_SIZE
+    const cols = Math.floor((pw - 20) / 26)
+    const rows = Math.floor((ph - 16) / 52)
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const dx = zpx + 10 + c * 26
+        const dy = zpy + 8 + r * 52
+        if (dy + 48 < zpy + ph - 4) {
+          lights.push({ x: dx + 7, y: dy + 2, phase: Math.random() * Math.PI * 2 })
+          lights.push({ x: dx + 7, y: dy + 33, phase: Math.random() * Math.PI * 2 })
+        }
+      }
     }
+  }
 
-    const pos = e.getLocalPosition(worldContainer)
-    const tileX = pos.x / TILE_SIZE
-    const tileY = pos.y / TILE_SIZE
-
-    const hoveredZone = MAP_ZONES.find(
-      (z) => tileX >= z.x && tileX <= z.x + z.width && tileY >= z.y && tileY <= z.y + z.height,
-    )
-
-    if (hoveredZone) {
-      const lines = [hoveredZone.name]
-      if (hoveredZone.seats) lines.push(`工位: ${hoveredZone.seats}`)
-      if (hoveredZone.group) lines.push(`区域: ${hoveredZone.group}`)
-      tooltipText.text = lines.join('\n')
-      tooltipText.x = pos.x + 12
-      tooltipText.y = pos.y - 10
-      tooltipText.visible = true
-    } else {
-      tooltipText.visible = false
+  let t = 0
+  const anim = () => {
+    t += 0.03
+    animLayer.clear()
+    for (const l of lights) {
+      const b = 0.4 + 0.6 * Math.abs(Math.sin(t + l.phase))
+      const r = Math.floor(0x4a * b)
+      const gb = Math.floor(0xba * b)
+      animLayer.rect(l.x, l.y, 7, 5).fill({ color: (r << 16) | (gb << 8) | gb, alpha: 0.8 })
     }
-  })
-
-  // -- Zoom and Pan --
-  let scale = 1
-  const MIN_SCALE = 0.3
-  const MAX_SCALE = 3
-
-  // Center the map initially
-  const centerMap = () => {
-    const screenW = app.screen.width
-    const screenH = app.screen.height
-    const mapW = MAP_WIDTH * TILE_SIZE
-    const mapH = MAP_HEIGHT * TILE_SIZE
-
-    scale = Math.min(screenW / mapW, screenH / mapH) * 0.9
-    worldContainer.scale.set(scale)
-    worldContainer.x = (screenW - mapW * scale) / 2
-    worldContainer.y = (screenH - mapH * scale) / 2
   }
+  app.ticker.add(anim)
 
-  centerMap()
-
-  // Wheel zoom
-  const onWheel = (e: WheelEvent) => {
-    e.preventDefault()
-    const direction = e.deltaY < 0 ? 1 : -1
-    const factor = 1 + direction * 0.1
-
-    const rect = app.canvas.getBoundingClientRect()
-    const mouseX = e.clientX - rect.left
-    const mouseY = e.clientY - rect.top
-
-    const worldX = (mouseX - worldContainer.x) / scale
-    const worldY = (mouseY - worldContainer.y) / scale
-
-    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * factor))
-    worldContainer.scale.set(newScale)
-    worldContainer.x = mouseX - worldX * newScale
-    worldContainer.y = mouseY - worldY * newScale
-    scale = newScale
+  return {
+    destroy() {
+      app.ticker.remove(anim)
+      worldContainer.removeChildren()
+    },
   }
-
-  app.canvas.addEventListener('wheel', onWheel, { passive: false })
-
-  // Drag pan
-  worldContainer.on('pointerdown', (e: FederatedPointerEvent) => {
-    dragging = true
-    dragStartX = e.globalX
-    dragStartY = e.globalY
-    dragContainerStartX = worldContainer.x
-    dragContainerStartY = worldContainer.y
-  })
-
-  app.stage.eventMode = 'static'
-  app.stage.hitArea = app.screen
-  app.stage.on('pointermove', (e: FederatedPointerEvent) => {
-    if (!dragging) return
-    worldContainer.x = dragContainerStartX + (e.globalX - dragStartX)
-    worldContainer.y = dragContainerStartY + (e.globalY - dragStartY)
-  })
-  app.stage.on('pointerup', () => { dragging = false })
-  app.stage.on('pointerupoutside', () => { dragging = false })
-
-  app.stage.addChild(worldContainer)
-
-  const destroy = () => {
-    app.canvas.removeEventListener('wheel', onWheel)
-    worldContainer.removeAllListeners()
-    app.stage.removeChild(worldContainer)
-    worldContainer.destroy({ children: true })
-  }
-
-  return { container: worldContainer, destroy }
 }
