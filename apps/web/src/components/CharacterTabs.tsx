@@ -6,7 +6,7 @@ import { DEPARTMENTS, type EmployeeProfile, type Stats } from '../data/employees
 import '../styles/pixel-ui.css'
 
 // === 五维雷达图 ===
-export function drawRadar(canvas: HTMLCanvasElement, stats: Stats): void {
+function drawRadar(canvas: HTMLCanvasElement, stats: Stats): void {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   const w = canvas.width

@@ -57,7 +57,6 @@ function App() {
   // Simulate loading progress after entering world
   useEffect(() => {
     if (!loading) return
-    setLoadProgress(0)
     let prog = 0
     loadTimerRef.current = setInterval(() => {
       prog = Math.min(prog + Math.random() * 0.08, 0.9)
