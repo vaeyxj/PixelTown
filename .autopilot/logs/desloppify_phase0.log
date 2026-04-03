@@ -1,0 +1,15 @@
+Done. Summary of what was removed:
+
+**simulation.test.ts** — removed 3 tests:
+- `'返回坐标'` — `typeof` checks on TS-guaranteed number fields
+- `'为每个员工创建 CharacterState'` — trivial 1:1 length assertion
+- `'state 包含方向字段'` — property existence guaranteed by the `CharacterState` interface
+- Also stripped `typeof overlay.color === 'number'` from the last test
+
+**employees.test.ts** — removed 3 tests + 1 unused import:
+- `'returns 30 employees'` — hardcoded fixture count
+- `'every employee has required fields'` — TypeScript interface already enforces these
+- `'returns undefined for missing id'` — testing `Array.find` JS spec
+- Removed `getEmployees` from import (became unused)
+
+Build clean, lint clean, 11 tests passing.

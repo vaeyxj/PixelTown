@@ -1,0 +1,14 @@
+Phase 1 迭代 0 **已全部完成**，验收标准全部满足：
+
+| 检查项 | 状态 |
+|--------|------|
+| public/tiles/ ≥ 4 张 | ✓ floor, wall, furniture, decor |
+| public/sprites/ ≥ 2 张 | ✓ character_male, character_female |
+| public/ui/ ≥ 1 张 | ✓ panel.png |
+| public/backgrounds/ ≥ 1 张 | ✓ login.png |
+| spriteLoader.ts 存在 | ✓ |
+| spriteSheet.ts 存在 | ✓ |
+| pnpm build exit 0 | ✓ built in 335ms |
+| pnpm test pass | ✓ 11 tests passed |
+
+上次迭代已用 `/draw` (gemini-2.5-flash-image) 生成了 8 张真实像素风美术资源，代码管线也已就绪。无需重复工作。

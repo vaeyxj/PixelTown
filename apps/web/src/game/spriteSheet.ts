@@ -1,11 +1,8 @@
 import { Texture } from 'pixi.js'
-import { loadSpriteSheet } from './spriteLoader'
+import { loadSpriteSheet, loadTileset } from './spriteLoader'
 
 /** 角色行走方向 */
 export type Direction = 'down' | 'left' | 'right' | 'up'
-
-/** 角色姿态 */
-export type Pose = 'walk' | 'stand' | 'sit' | 'type'
 
 /**
  * 标准角色 Sprite Sheet 布局（32×48px 每帧）
@@ -88,7 +85,6 @@ export class TilesetManager {
   }
 
   async load(): Promise<void> {
-    const { loadTileset } = await import('./spriteLoader')
     this.tiles = await loadTileset(this.path, this.tileWidth, this.tileHeight)
   }
 

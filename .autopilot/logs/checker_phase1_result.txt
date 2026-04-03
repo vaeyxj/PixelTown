@@ -1,1 +1,1 @@
-PHASE_INCOMPLETE: public/tiles/ 无瓦片图、public/sprites/ 无角色sprite sheet、public/ui/ 无UI边框图、public/backgrounds/ 无背景图、src/game/spriteLoader.ts 不存在、src/game/spriteSheet.ts 不存在
+PHASE_COMPLETE
