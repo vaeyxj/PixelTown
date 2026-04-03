@@ -1,7 +1,7 @@
 /**
  * 游戏主引擎 — 组装并启动各子系统
  */
-import { Application, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js'
+import { Application, Container, Sprite, Text, TextStyle } from 'pixi.js'
 import { MAP_WIDTH, MAP_HEIGHT, TILE_SIZE } from './mapData'
 import { createOfficeMap } from './mapRenderer'
 import { generateCharacterFrames, generateAppearance, CHAR_H } from './characterSprite'
@@ -10,7 +10,6 @@ import {
   initCharacterStates,
   getEntrancePosition,
   SimClock,
-  getDaylightOverlay,
   type CharacterState,
   type EmployeeStatus,
 } from './simulation'
@@ -20,6 +19,7 @@ import { createNpcManager } from './npcManager'
 import { createBubbleSystem } from './bubbleSystem'
 import { createParticleSystem } from './particleSystem'
 import { applyParallax, createBackgroundLayer, createForegroundLayer } from './parallax'
+import { createDayNightSystem } from './dayNightSystem'
 
 export interface GameCallbacks {
   onStatsUpdate: (stats: Record<EmployeeStatus, number>, timeStr: string, onlineCount: number) => void
@@ -65,16 +65,13 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
   const particleLayer = new Container()
   worldContainer.addChild(particleLayer)
 
-  const daylightOverlay = new Graphics()
-  daylightOverlay.rect(0, 0, worldW, worldH).fill({ color: 0x000000, alpha: 0 })
-  worldContainer.addChild(daylightOverlay)
-
   const employees = generateEmployees(60)
   const clock = new SimClock(10, 30, 30)
   const { hour, minute } = clock.getTime()
   const characters = initCharacterStates(employees, hour, minute)
 
   const particleSystem = createParticleSystem(particleLayer)
+  const dayNightSystem = createDayNightSystem(worldContainer, worldW, worldH, particleSystem)
   const npcManager = createNpcManager(app, characterLayer, emojiLayer, nameTagLayer, characters, callbacks.onCharacterClick, particleSystem)
 
   const playerFrames = generateCharacterFrames(app, { ...generateAppearance(9999), shirtColor: 0xe84040 })
@@ -159,13 +156,7 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
     npcManager.update(dt, h, m, emojiAnimTime, bubbleSystem.talkingIds)
     bubbleSystem.update(dt, npcManager.entries)
     particleSystem.update(dt)
-
-    // 昼夜遮罩
-    const daylight = getDaylightOverlay(h, m)
-    daylightOverlay.clear()
-    if (daylight.alpha > 0) {
-      daylightOverlay.rect(0, 0, worldW, worldH).fill({ color: daylight.color, alpha: daylight.alpha })
-    }
+    dayNightSystem.update(h, m, dt, worldContainer.x, worldContainer.y, camera.scale, app.screen.width, app.screen.height)
 
     camera.update(playerState.x, playerState.y)
     applyParallax(parallaxLayers, worldContainer.x, worldContainer.y, app.screen.width, app.screen.height)
@@ -187,6 +178,7 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
       npcManager.destroy()
       bubbleSystem.destroy()
       particleSystem.destroy()
+      dayNightSystem.destroy()
       destroyMap()
       bgLayer.destroy({ children: true })
       fgLayer.destroy({ children: true })

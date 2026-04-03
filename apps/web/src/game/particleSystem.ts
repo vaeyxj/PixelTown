@@ -23,6 +23,8 @@ export interface ParticleSystem {
   emitWalkDust(x: number, y: number): void
   /** NPC 工作时键盘上方微光粒子 */
   emitKeyboardGlow(x: number, y: number): void
+  /** 黎明/黄昏大气光斑粒子 */
+  emitAtmosphericDust(x: number, y: number, color: number): void
   update(dt: number): void
   destroy(): void
 }
@@ -73,6 +75,20 @@ export function createParticleSystem(layer: Container): ParticleSystem {
         p.size = 0.5 + Math.random() * 0.5
         p.color = Math.random() > 0.5 ? 0xffffff : 0xffe080
       }
+    },
+
+    emitAtmosphericDust(x, y, color) {
+      const p = acquire()
+      if (!p) return
+      p.active = true
+      p.x = x + (Math.random() - 0.5) * 30
+      p.y = y + (Math.random() - 0.5) * 30
+      p.vx = 4 + Math.random() * 6   // 缓慢水平漂移
+      p.vy = -0.5 - Math.random()    // 极慢上浮
+      p.life = 2.0 + Math.random() * 2.0
+      p.maxLife = p.life
+      p.size = 1 + Math.random() * 1.5
+      p.color = color
     },
 
     update(dt) {

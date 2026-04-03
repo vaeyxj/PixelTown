@@ -80,9 +80,18 @@ Phase 2 验收标准核查：
   - 当角色 ID 在 talkingIds 中：`sprite.x += Math.sin(emojiAnimTime * 9) * 0.8` 左右微摇
   - `engine.ts` 修改 npcManager.update 调用，传入 `bubbleSystem.talkingIds`（行数不变，199 行）
 
+#### Phase 2 迭代 4 完成
+- **日夜系统提取** (`dayNightSystem.ts` 新模块)
+  - 从 engine.ts 提取 daylightOverlay 逻辑，engine.ts 从 199 行降至 191 行
+  - `createDayNightSystem(worldContainer, worldW, worldH, particleSystem)` 统一管理光照
+- **大气粒子效果** (`emitAtmosphericDust`)
+  - `particleSystem.ts` 新增 `emitAtmosphericDust(x, y, color)`：慢速水平漂移、极慢上浮
+  - 黎明 (6–9h) 发射金白色粒子，黄昏 (17–20h) 发射暖橙色粒子
+  - 粒子在当前视口世界坐标范围内随机位置生成（viewport-aware 位置计算）
+  - 寿命 2–4 秒，带渐出效果
+
 待完成（Phase 2 后续迭代）：
 - 角色阴影独立层（当前已有烘焙版阴影，独立层可改善深度排序）
-- 日出日落空气光斑粒子（emitAtmosphericDust 类型效果）
 
 ## 关键上下文
 - 项目在 apps/web/ 下，运行 pnpm build/lint/test 时需 cd apps/web
