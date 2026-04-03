@@ -1,5 +1,5 @@
 # PixelTown Task Notes
-上次更新: Phase 2 迭代 6 完成
+上次更新: Phase 2 迭代 7 完成
 
 ## 已完成
 
@@ -125,6 +125,31 @@ Phase 2 验收标准最终核查：
 
 Phase 2 完整交付 ✓
 
+#### Phase 2 迭代 7 完成
+- **LoginScreen 重设计**
+  - 打字机效果标题 (PIXEL TOWN 逐字显示，80ms/字)
+  - 60 颗闪烁星星背景 (CSS animation `twinkle`)
+  - 24 颗漂浮光斑粒子 (CSS `float-particle` + `--dx` 自定义属性)
+  - SVG 像素建筑 (主楼+路灯+门灯，含 SVG `<animate>` 窗户闪烁)
+  - 副标题/按钮用 opacity + translateY 渐入过渡
+
+- **pixel-ui.css 设计系统**
+  - 像素边框/窗口/按钮/输入框/进度条/徽章/选项卡/工具栏槽/LED 数字
+  - 提取为独立 CSS 文件，供所有 UI 组件复用
+  - 动画关键帧：twinkle, cursor-blink, float-particle, pixel-bounce, pixel-fade-in, pixel-slide-up, pixel-open, scan-line, pixel-pulse
+
+- **StatsDashboard 团队仪表盘**
+  - 三列网格布局：实时状态分布 | 部门人数 | 团队五维均值雷达图
+  - 第4行：热门技能 TOP 8（按均值排序）
+  - 所有图表用 Canvas 绘制（雷达图）或 pixel-progress 条
+  - BottomToolbar STATS 按钮现已可用（之前 dashboard panel 缺失）
+  - `App.tsx` 新增 `StatsDashboard` 渲染分支
+
+## 当前阶段状态
+- HUD.tsx: LED 时钟 + CRT 小地图扫描线 + BottomToolbar 工具栏（已在前序迭代完成）
+- EmployeeGrid.tsx: 全屏员工图鉴，支持搜索/部门筛选/排序（已在前序迭代完成）
+- App.tsx: 已集成 CharacterPanel + EmployeeGrid + StatsDashboard 三大面板
+
 ## 关键上下文
 - 项目在 apps/web/ 下，运行 pnpm build/lint/test 时需 cd apps/web
 - `erasableSyntaxOnly` TypeScript 配置：禁止使用类参数属性，改用字段声明+构造器赋值
@@ -188,7 +213,7 @@ Phase 3 验收标准核查：
 ## 阻碍
 - 无当前阻碍（Phase 2 卡住根因：checker_phase2_result.txt 过期，state.json 未推进；已修复，推进至 Phase 3）
 
-## 上次质量门报告 (Phase 2 迭代 6)
+## 上次质量门报告 (Phase 2 迭代 7)
 BUILD: ✓ PASS
 LINT: ✓ PASS（build 包含 tsc 检查）
 TEST: ✓ PASS (11 tests across 2 files)
