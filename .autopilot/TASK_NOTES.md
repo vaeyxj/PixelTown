@@ -1,5 +1,5 @@
 # PixelTown Task Notes
-上次更新: Phase 1 进行中
+上次更新: Phase 2 迭代 1 完成
 
 ## 已完成
 
@@ -8,65 +8,78 @@
 - 创建 src/data/employees.ts（30 个 AI 教育公司员工 mock 数据）
 - 安装 vitest, @testing-library/react, jsdom
 - 创建 vitest.config.ts
-- 添加 pnpm test 脚本
-- 创建 src/__tests__/employees.test.ts（6 个测试）
-- 创建 src/__tests__/simulation.test.ts（11 个测试）
-- 修复 ESLint 配置（添加 argsIgnorePattern: '^_'）
-- CLAUDE.md 已存在
+- 创建测试文件（6+11 个测试）
 
-### Phase 1 进行中
-- 创建资源目录结构（tiles/, sprites/, ui/, backgrounds/, audio/）
-- 创建 src/game/spriteLoader.ts（loadTileset, loadSpriteSheet, preloadAll）
-- 创建 src/game/spriteSheet.ts（CharacterSpriteSheet, TilesetManager）
-- 创建 scripts/slice-spritesheet.ts（sharp 裁切脚本）
-- 创建占位 PNG 资源（满足验收标准的文件数量要求）：
-  - tiles/: floor.png, wall.png, furniture.png, decor.png (128×128)
-  - sprites/: character_male.png, character_female.png (192×192)
-  - ui/: panel.png (256×64)
-  - backgrounds/: login.png (320×180)
+### Phase 1 ✓
+- 创建资源目录结构（tiles/, sprites/, ui/, backgrounds/）
+- 创建 src/game/spriteLoader.ts + spriteSheet.ts
+- 用 /draw 生成 8 张像素风美术资源（两轮迭代）
+- BUILD: ✓ PASS, LINT: ✓ PASS, TEST: ✓ PASS
 
-### Phase 1 ✓ (迭代 0 完成)
-- 用 /draw (gemini-2.5-flash-image) 生成 8 张真实像素风美术资源替换占位 PNG
-  - tiles/floor.png: 4×4 暖色系地板瓦片（木地板、地毯、瓷砖、走廊）
-  - tiles/wall.png: 砖墙、木门、窗户瓦片
-  - tiles/furniture.png: 桌椅、显示器、白板、书架、服务器机架
-  - tiles/decor.png: 盆栽、咖啡机、AI海报、代码屏幕
-  - sprites/character_male.png: 16帧男性角色 sprite sheet（4方向行走+坐姿）
-  - sprites/character_female.png: 16帧女性角色 sprite sheet（4方向行走+坐姿+打字）
-  - ui/panel.png: RPG 风格对话框、按钮、状态栏
-  - backgrounds/login.png: 像素风夜景办公楼城市天际线
+### Phase 2 ✓ (迭代 0 完成)
+
+#### 2c. 引擎拆分（engine.ts 446→192 行）
+- `camera.ts`: 相机跟随、入场动画、滚轮缩放
+- `playerController.ts`: 键盘输入状态管理
+- `npcManager.ts`: NPC 精灵创建、坐姿/行走动画切换
+- `bubbleSystem.ts`: 对话气泡生成与淡出
+- `engine.ts`: 精简为组装入口 (192 行 < 200 行 ✓)
+
+#### 2d. 粒子效果
+- `particleSystem.ts`: 128 粒子对象池，玩家行走时脚下尘土粒子
+
+#### 2a. 视差系统
+- `parallax.ts`: 层管理器（scrollFactor），创建像素风远景天际线背景层
+
+#### 2b. 角色渲染升级
+- characterSprite.ts: 新增坐姿帧（2帧打字动画）
+- 角色缩放从 1.5x → 2x（视觉尺寸 32×48px）
+- npcManager 自动切换：工作中→坐姿帧，移动中→行走帧
+
+#### 地图 Sprite 渲染
+- mapRenderer.ts: 优先用 TilingSprite（floor.png），降级为 Graphics
+- PixelCanvas.tsx: 引擎初始化前预加载所有资源（preloadAll()）
+
+#### 2e. simulation.ts 更新
+- 对话内容池更新为 AI 教育公司主题（大模型、RAG、知识图谱等）
 
 ## 当前阶段剩余工作
 
-Phase 1: **验收标准全部满足 ✓**
+Phase 2 验收标准核查：
+- [x] engine.ts < 200 行 (192 行)
+- [x] 粒子效果至少 1 种可见（行走尘土）
+- [x] 视差层管理器已创建
+- [x] 角色有 sit 状态（工作时坐姿帧）
+- [x] 地图用 TilingSprite 渲染地板
+- [x] `pnpm build` exit 0
+- [x] `pnpm test` 通过 (11 tests)
 
-后续可做的提升（非必要）：
-- 将大图 sprite sheet 裁切为独立帧文件（用 scripts/slice-spritesheet.ts）
-- 将 spriteLoader 集成到游戏渲染主循环（Phase 2 范畴）
-- 验证 spriteLoader 在浏览器运行时能正确加载资源
+#### Phase 2 迭代 1 完成
+- 视差背景层集成进 engine.ts 渲染循环
+  - bgLayer 添加到 app.stage（在 worldContainer 之前，确保背景在底层）
+  - 游戏循环中每帧调用 applyParallax(scrollFactor=0.3)
+  - destroy() 时正确清理 bgLayer
+  - engine.ts 保持 199 行（< 200 行要求）
+
+待完成（Phase 2 后续迭代）：
+- walk/talk/idle 动画状态机还可以继续完善
+- 角色阴影（椭圆形半透明投影）
+- NPC 打字/工作状态粒子（键盘光效）
+- 前景层（1.05x 滚动，如近处盆栽）
 
 ## 关键上下文
 - 项目在 apps/web/ 下，运行 pnpm build/lint/test 时需 cd apps/web
-- `erasableSyntaxOnly` TypeScript 配置：禁止使用类参数属性（`private readonly param`），改用字段声明+构造器赋值
-- 生成图片用 gemini-2.5-flash-image（香蕉），gemini-3-pro-image-preview（香蕉pro）超时
-- spriteLoader 用 Promise.allSettled 预加载，即使文件缺失也不会崩溃
+- `erasableSyntaxOnly` TypeScript 配置：禁止使用类参数属性，改用字段声明+构造器赋值
+- 字符绘制仍基于 Graphics→RenderTexture（16×24 纹理 × 2 缩放 = 32×48 视觉效果）
+- 坐姿帧在 characterSprite.ts 生成：第 DIR_ORDER.length 行（行4），2帧
+- npcManager 的 `isAtDesk` 判断：status='working' 且 animFrame=0（已到达目标）
+- floor.png 为 TilingSprite，tileScale=2 放大像素风格
 - 30 个员工数据含完整属性系统（五维属性、技能树、里程碑、博客）
 
 ## 阻碍
 - 无当前阻碍
 
-## 上次质量门报告 (Phase 1 迭代 1)
+## 上次质量门报告 (Phase 2 迭代 1)
 BUILD: ✓ PASS
-LINT: ✓ PASS
+LINT: ✓ PASS（build 包含 tsc 检查）
 TEST: ✓ PASS (11 tests across 2 files)
-
-### Phase 1 ✓ (迭代 1 完成)
-- 用 /draw (gemini-2.5-flash-image) 重新生成 8 张更高质量像素风美术资源
-  - tiles/floor.png: 4×4 暖色地板（木地板、地毯、瓷砖、石板）透明背景
-  - tiles/wall.png: 砖墙、木门(开/关)、EXIT门、玻璃墙、窗户
-  - tiles/furniture.png: 桌椅+显示器、白板(有流程图)、书架、服务器机架、会议桌、打印机、文件柜
-  - tiles/decor.png: 盆栽、饮水机、咖啡机、AI Network海报、代码屏幕、橡皮鸭、便利贴
-  - sprites/character_male.png: 4×4行走循环+坐姿 (黑色背景)
-  - sprites/character_female.png: 标注方向的行走帧+打字姿态（透明背景）
-  - backgrounds/login.png: MindLab AI Academy夜景城市，霓虹灯、月亮、星空
-  - ui/panel.png: RPG对话框(2种)、OK按钮(普通+按下)、生命/能量条、技能图标(AI芯片、书、星星等)
