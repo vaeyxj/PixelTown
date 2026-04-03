@@ -3,7 +3,7 @@
  * 不再管理摄像机和交互，只负责往 worldContainer 里添加图层
  * 地板层使用 TilingSprite（若资源已预加载），降级为 Graphics
  */
-import { Application, Assets, Container, Graphics, Sprite, Text, TextStyle, Texture, TilingSprite } from 'pixi.js'
+import { Application, Assets, Container, Graphics, RenderTexture, Sprite, Text, TextStyle, Texture, TilingSprite } from 'pixi.js'
 import { MAP_ZONES, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, type MapZone } from './mapData'
 import {
   drawDeskPair,
@@ -196,56 +196,47 @@ export function createOfficeMap(
   }
   worldContainer.addChild(floorSprite)
 
-  // 2. 走廊
-  const corridors = new Graphics()
-  drawCorridors(corridors)
-  worldContainer.addChild(corridors)
-
-  // 3. 区域
-  const zones = new Graphics()
+  // 2-5. 走廊、区域、墙壁、装饰 — 烘焙进单张 RenderTexture，以 Sprite 显示
+  const staticG = new Graphics()
+  drawCorridors(staticG)
   for (const zone of MAP_ZONES) {
-    const px = zone.x * TILE_SIZE
-    const py = zone.y * TILE_SIZE
-    const pw = zone.width * TILE_SIZE
-    const ph = zone.height * TILE_SIZE
-
+    const zx = zone.x * TILE_SIZE
+    const zy = zone.y * TILE_SIZE
+    const zw = zone.width * TILE_SIZE
+    const zh = zone.height * TILE_SIZE
     switch (zone.type) {
       case 'workstation':
       case 'shared_desk':
-        fillWorkstationZone(zones, zone)
+        fillWorkstationZone(staticG, zone)
         break
       case 'meeting_room':
-        drawMeetingRoom(zones, px + 3, py + 5, pw - 6, ph - 8)
+        drawMeetingRoom(staticG, zx + 3, zy + 5, zw - 6, zh - 8)
         break
       case 'restroom':
-        fillRestroomZone(zones, zone)
+        fillRestroomZone(staticG, zone)
         break
       case 'storage':
-        fillStorageZone(zones, zone)
+        fillStorageZone(staticG, zone)
         break
       case 'exit':
-        fillExitZone(zones, zone)
+        fillExitZone(staticG, zone)
         break
       case 'service':
-        fillServiceZone(zones, zone)
+        fillServiceZone(staticG, zone)
         break
     }
   }
-  worldContainer.addChild(zones)
-
-  // 4. 墙壁
-  const walls = new Graphics()
-  for (const zone of MAP_ZONES) drawWalls(walls, zone)
-  walls.rect(0, 0, 4, mh).fill(0xb8a890)
-  walls.rect(mw - 4, 0, 4, mh).fill(0xb8a890)
-  walls.rect(0, 0, mw, 6).fill(0x9a8a7a)
-  walls.rect(0, mh - 4, mw, 4).fill(0xa89880)
-  worldContainer.addChild(walls)
-
-  // 5. 装饰
-  const decos = new Graphics()
-  placeDecorations(decos)
-  worldContainer.addChild(decos)
+  for (const zone of MAP_ZONES) drawWalls(staticG, zone)
+  staticG.rect(0, 0, 4, mh).fill(0xb8a890)
+  staticG.rect(mw - 4, 0, 4, mh).fill(0xb8a890)
+  staticG.rect(0, 0, mw, 6).fill(0x9a8a7a)
+  staticG.rect(0, mh - 4, mw, 4).fill(0xa89880)
+  placeDecorations(staticG)
+  const staticRT = RenderTexture.create({ width: mw, height: mh })
+  app.renderer.render({ container: staticG, target: staticRT })
+  staticG.destroy()
+  const staticSprite = new Sprite(staticRT)
+  worldContainer.addChild(staticSprite)
 
   // 6. 标签
   const labels = new Container()
@@ -319,6 +310,7 @@ export function createOfficeMap(
     destroy() {
       app.ticker.remove(anim)
       worldContainer.removeChildren()
+      staticRT.destroy(true)
     },
   }
 }

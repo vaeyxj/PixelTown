@@ -123,6 +123,7 @@ export function createNpcManager(
 
         // 动画状态选择
         const isAtDesk = WORKING_STATUSES.has(state.status) && state.animFrame === 0
+        const isIdle = state.status === 'idle' || state.status === 'away'
         if (isAtDesk && charFrames.sit.length > 0) {
           entry.sitTimer += dt
           const sitFrame = Math.floor(entry.sitTimer * 2) % 2
@@ -133,12 +134,15 @@ export function createNpcManager(
             entry.glowTimer = 0
             particleSystem?.emitKeyboardGlow(state.x, state.y - CHAR_H * 0.8)
           }
+        } else if (isIdle && charFrames.idle[state.direction].length > 0) {
+          // idle 呼吸动画：0.8Hz 切换两帧
+          const idleFrame = Math.floor(emojiAnimTime * 0.8) % 2
+          sprite.texture = charFrames.idle[state.direction][idleFrame]
         } else {
           sprite.texture = charFrames.frames[state.direction][state.animFrame]
         }
 
         // idle/away 状态：轻微呼吸浮动
-        const isIdle = state.status === 'idle' || state.status === 'away'
         const breathY = isIdle ? Math.sin(emojiAnimTime * 1.5 + state.employee.id * 1.7) * 0.5 : 0
         sprite.y = state.y + breathY
 

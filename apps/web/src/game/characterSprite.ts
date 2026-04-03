@@ -25,6 +25,8 @@ export interface CharacterFrames {
   readonly frames: Record<Direction, readonly Texture[]>
   /** Sit/type animation: 2 帧 (工作坐姿) */
   readonly sit: readonly Texture[]
+  /** Idle/breathe animation: idle[direction][0|1], 2 帧 */
+  readonly idle: Record<Direction, readonly Texture[]>
 }
 
 const SKIN_TONES = [0xffe0bd, 0xf5c9a0, 0xe8b887, 0xd4a574, 0xc68c53] as const
@@ -193,6 +195,66 @@ function drawSitFrame(
   px(g, x + 9, y + 21, 5, 2, pants)
 }
 
+/** idle 帧 — 角色站立呼吸 (16×24), breathFrame=1 时身体轻微上移 */
+function drawIdleFrame(
+  g: Graphics,
+  offsetX: number,
+  offsetY: number,
+  dir: Direction,
+  breathFrame: number,
+  ap: CharAppearance,
+): void {
+  const x = offsetX
+  const y = offsetY
+  const skin = ap.skinColor
+  const hair = ap.hairColor
+  const shirt = ap.shirtColor
+  const pants = ap.pantsColor
+  const shoe = 0x3a2a1a
+  const eyeColor = 0x1a1a2a
+  // 呼吸帧：整个上半身上移 1px
+  const bY = breathFrame === 1 ? -1 : 0
+
+  if (ap.hairStyle === 'long') px(g, x + 3, y + 2 + bY, 10, 8, hair)
+  px(g, x + 4, y + 2 + bY, 8, 8, skin)
+  px(g, x + 3, y + 1 + bY, 10, 3, hair)
+  if (ap.hairStyle === 'spiky') {
+    px(g, x + 3, y + bY, 2, 2, hair)
+    px(g, x + 7, y - 1 + bY, 2, 2, hair)
+    px(g, x + 11, y + bY, 2, 2, hair)
+  } else if (ap.hairStyle === 'short') {
+    px(g, x + 3, y + 1 + bY, 10, 2, hair)
+  }
+
+  if (dir === 'down') {
+    px(g, x + 5, y + 5 + bY, 2, 2, eyeColor)
+    px(g, x + 9, y + 5 + bY, 2, 2, eyeColor)
+    px(g, x + 7, y + 8 + bY, 2, 1, 0xd09070)
+  } else if (dir === 'up') {
+    px(g, x + 3, y + 2 + bY, 10, 4, hair)
+  } else if (dir === 'left') {
+    px(g, x + 4, y + 5 + bY, 2, 2, eyeColor)
+    px(g, x + 6, y + 8 + bY, 1, 1, 0xd09070)
+  } else {
+    px(g, x + 10, y + 5 + bY, 2, 2, eyeColor)
+    px(g, x + 9, y + 8 + bY, 1, 1, 0xd09070)
+  }
+
+  px(g, x + 3, y + 10 + bY, 10, 7, shirt)
+  px(g, x + 4, y + 11 + bY, 2, 3, lighten(shirt, 20))
+  px(g, x + 11, y + 11 + bY, 1, 5, darken(shirt, 30))
+  // 手臂垂放
+  px(g, x + 1, y + 11 + bY, 3, 5, shirt)
+  px(g, x + 1, y + 16 + bY, 3, 1, skin)
+  px(g, x + 12, y + 11 + bY, 3, 5, shirt)
+  px(g, x + 12, y + 16 + bY, 3, 1, skin)
+  // 腿站直（不随呼吸移动，更自然）
+  px(g, x + 4, y + 17, 4, 4, pants)
+  px(g, x + 4, y + 21, 4, 2, shoe)
+  px(g, x + 8, y + 17, 4, 4, pants)
+  px(g, x + 8, y + 21, 4, 2, shoe)
+}
+
 function lighten(color: number, amount: number): number {
   const r = Math.min(255, ((color >> 16) & 0xff) + amount)
   const gg = Math.min(255, ((color >> 8) & 0xff) + amount)
@@ -213,8 +275,10 @@ function darken(color: number, amount: number): number {
  */
 export function generateCharacterFrames(app: Application, appearance: CharAppearance): CharacterFrames {
   const SIT_FRAMES = 2
-  const sheetW = CHAR_W * Math.max(FRAME_COUNT, SIT_FRAMES)
-  const sheetH = CHAR_H * (DIR_ORDER.length + 1) // +1 行坐姿
+  const IDLE_FRAMES = 2
+  const sheetW = CHAR_W * Math.max(FRAME_COUNT, SIT_FRAMES, IDLE_FRAMES)
+  // 行布局: 4行行走 + 1行坐姿 + 4行idle(每方向一行)
+  const sheetH = CHAR_H * (DIR_ORDER.length + 1 + DIR_ORDER.length)
 
   // 1. 绘制整张精灵图到 RenderTexture
   const g = new Graphics()
@@ -227,6 +291,14 @@ export function generateCharacterFrames(app: Application, appearance: CharAppear
   const sitRowY = DIR_ORDER.length * CHAR_H
   for (let fi = 0; fi < SIT_FRAMES; fi++) {
     drawSitFrame(g, fi * CHAR_W, sitRowY, fi, appearance)
+  }
+  // idle 帧（坐姿行之后，每方向一行）
+  const idleStartRow = DIR_ORDER.length + 1
+  for (let di = 0; di < DIR_ORDER.length; di++) {
+    const rowY = (idleStartRow + di) * CHAR_H
+    for (let fi = 0; fi < IDLE_FRAMES; fi++) {
+      drawIdleFrame(g, fi * CHAR_W, rowY, DIR_ORDER[di], fi, appearance)
+    }
   }
 
   const rt = RenderTexture.create({ width: sheetW, height: sheetH })
@@ -250,5 +322,16 @@ export function generateCharacterFrames(app: Application, appearance: CharAppear
     sit.push(new Texture({ source: rt.source, frame: new Rectangle(fi * CHAR_W, sitRowY, CHAR_W, CHAR_H) }))
   }
 
-  return { frames, sit }
+  // idle 帧
+  const idle = {} as Record<Direction, Texture[]>
+  for (let di = 0; di < DIR_ORDER.length; di++) {
+    const dir = DIR_ORDER[di]
+    const rowY = (idleStartRow + di) * CHAR_H
+    idle[dir] = []
+    for (let fi = 0; fi < IDLE_FRAMES; fi++) {
+      idle[dir].push(new Texture({ source: rt.source, frame: new Rectangle(fi * CHAR_W, rowY, CHAR_W, CHAR_H) }))
+    }
+  }
+
+  return { frames, sit, idle }
 }
