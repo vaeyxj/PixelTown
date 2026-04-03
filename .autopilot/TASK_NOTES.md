@@ -1,5 +1,5 @@
 # PixelTown Task Notes
-上次更新: Phase 2 迭代 1 完成
+上次更新: Phase 2 迭代 2 完成
 
 ## 已完成
 
@@ -56,16 +56,25 @@ Phase 2 验收标准核查：
 
 #### Phase 2 迭代 1 完成
 - 视差背景层集成进 engine.ts 渲染循环
-  - bgLayer 添加到 app.stage（在 worldContainer 之前，确保背景在底层）
-  - 游戏循环中每帧调用 applyParallax(scrollFactor=0.3)
-  - destroy() 时正确清理 bgLayer
   - engine.ts 保持 199 行（< 200 行要求）
 
+#### Phase 2 迭代 2 完成
+- **前景层**（1.05x 滚动）
+  - `parallax.ts` 新增 `createForegroundLayer(worldW, worldH)`: 12 个盆栽散布在走廊附近
+  - `drawFgPlant()` 绘制带花盆、茎、多叶片的前景植物
+  - engine.ts 添加 fgLayer 到 app.stage（在 worldContainer 之后，保证最前）
+  - parallaxLayers 包含 bg(0.3) + fg(1.05) 两层
+  - engine.ts 保持 199 行（< 200 行要求）
+- **键盘光效粒子**
+  - `particleSystem.ts` 新增 `emitKeyboardGlow(x, y)`: 每次 3 颗白/黄小粒子上浮
+  - `npcManager.ts` 新增 `glowTimer` per-entry: 每 1.5s 当 NPC isAtDesk 时触发
+  - `createNpcManager()` 接受可选 `particleSystem` 参数
+- **idle 呼吸动画**
+  - npcManager update: idle/away 状态下 sprite.y 添加正弦浮动（振幅 0.5px）
+
 待完成（Phase 2 后续迭代）：
-- walk/talk/idle 动画状态机还可以继续完善
-- 角色阴影（椭圆形半透明投影）
-- NPC 打字/工作状态粒子（键盘光效）
-- 前景层（1.05x 滚动，如近处盆栽）
+- 角色阴影（椭圆形半透明投影，当前已有烘焙阴影但无独立层）
+- walk/talk 动画状态机继续完善（当前 walk 4 帧已有，talk 可加微动）
 
 ## 关键上下文
 - 项目在 apps/web/ 下，运行 pnpm build/lint/test 时需 cd apps/web
@@ -79,7 +88,7 @@ Phase 2 验收标准核查：
 ## 阻碍
 - 无当前阻碍
 
-## 上次质量门报告 (Phase 2 迭代 1)
+## 上次质量门报告 (Phase 2 迭代 2)
 BUILD: ✓ PASS
 LINT: ✓ PASS（build 包含 tsc 检查）
 TEST: ✓ PASS (11 tests across 2 files)
