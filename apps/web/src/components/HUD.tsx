@@ -1,6 +1,7 @@
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback, useState } from 'react'
 import { MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, MAP_ZONES } from '../game/mapData'
 import type { CharacterState, EmployeeStatus } from '../game/simulation'
+import { audioManager } from '../game/audioManager'
 import '../styles/pixel-ui.css'
 
 interface StatsProps {
@@ -18,7 +19,11 @@ interface ToolbarProps {
   readonly onOpenGrid: () => void
   readonly onOpenDashboard: () => void
   readonly onSearch: () => void
+  readonly onToggleMute: () => void
+  readonly onOpenAudio: () => void
   readonly activePanel: string | null
+  readonly audioMuted: boolean
+  readonly masterVol: number
 }
 
 const STATUS_LABELS: Record<EmployeeStatus, { label: string; color: string; icon: string }> = {
@@ -206,21 +211,85 @@ export function MiniMap({ characters, cameraRect }: MiniMapProps) {
   )
 }
 
+function audioVolumeIcon(muted: boolean, vol: number): string {
+  if (muted || vol === 0) return '🔇'
+  if (vol < 0.35) return '🔈'
+  if (vol < 0.7) return '🔉'
+  return '🔊'
+}
+
+// 音量调节面板
+export function AudioPanel({ onClose }: { onClose: () => void }) {
+  const [masterVol, setMasterVol] = useState(audioManager.masterVol)
+  const [bgmVol, setBgmVol] = useState(audioManager.bgmVol)
+  const [sfxVol, setSfxVol] = useState(audioManager.sfxVol)
+
+  return (
+    <div
+      className="pixel-window"
+      style={{
+        position: 'fixed',
+        bottom: 84,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 220,
+        zIndex: 60,
+        animation: 'pixel-open 0.2s ease-out',
+      }}
+    >
+      <div className="pixel-window-header">
+        <span className="pixel-window-title">🔊 AUDIO</span>
+        <button className="pixel-btn pixel-btn-close" onClick={onClose}>×</button>
+      </div>
+      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {([
+          ['MASTER', masterVol, (v: number) => { setMasterVol(v); audioManager.setMasterVol(v) }],
+          ['BGM',    bgmVol,    (v: number) => { setBgmVol(v);    audioManager.setBgmVol(v)    }],
+          ['SFX',   sfxVol,    (v: number) => { setSfxVol(v);    audioManager.setSfxVol(v)    }],
+        ] as [string, number, (v: number) => void][]).map(([label, val, set]) => (
+          <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'monospace', fontSize: 10, color: '#6a9aba', letterSpacing: 1 }}>
+              <span>{label}</span>
+              <span className="pixel-led" style={{ fontSize: 11 }}>{Math.round(val * 100)}</span>
+            </div>
+            <input
+              type="range"
+              className="pixel-range"
+              min={0} max={1} step={0.01}
+              value={val}
+              onChange={e => set(parseFloat(e.target.value))}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // 底部工具栏
-export function BottomToolbar({ onOpenGrid, onOpenDashboard, onSearch, activePanel }: ToolbarProps) {
+export function BottomToolbar({ onOpenGrid, onOpenDashboard, onSearch, onToggleMute, onOpenAudio, activePanel, audioMuted, masterVol }: ToolbarProps) {
+  const audioIcon = audioVolumeIcon(audioMuted, masterVol)
+
   const slots = [
     { icon: '🗺️', label: 'MAP',    action: null },
     { icon: '👥', label: 'ROSTER', action: 'grid' },
     { icon: '📊', label: 'STATS',  action: 'dashboard' },
     { icon: '🔍', label: 'SEARCH', action: 'search' },
     { icon: '⚙️', label: 'CONFIG', action: null },
-    { icon: '🔊', label: 'AUDIO',  action: null },
+    { icon: audioIcon, label: 'AUDIO', action: 'audio' },
   ]
 
   const handleClick = (action: string | null) => {
     if (action === 'grid') onOpenGrid()
     else if (action === 'dashboard') onOpenDashboard()
     else if (action === 'search') onSearch()
+    else if (action === 'audio') onToggleMute()
+  }
+
+  const handleContextMenu = (e: React.MouseEvent, action: string | null) => {
+    if (action !== 'audio') return
+    e.preventDefault()
+    onOpenAudio()
   }
 
   return (
@@ -245,7 +314,8 @@ export function BottomToolbar({ onOpenGrid, onOpenDashboard, onSearch, activePan
           key={i}
           className={`pixel-slot${activePanel === s.action ? ' active' : ''}`}
           onClick={() => handleClick(s.action)}
-          title={s.label}
+          onContextMenu={e => handleContextMenu(e, s.action)}
+          title={s.action === 'audio' ? (audioMuted ? '点击取消静音 / 右键调节音量' : '点击静音 / 右键调节音量') : s.label}
         >
           <span className="pixel-slot-icon">{s.icon}</span>
           <span className="pixel-slot-label">{s.label}</span>

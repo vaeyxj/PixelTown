@@ -1,10 +1,11 @@
 import { useState, useCallback, useRef } from 'react'
 import { PixelCanvas } from './components/PixelCanvas'
 import { LoginScreen } from './components/LoginScreen'
-import { StatsPanel, MiniMap, BottomToolbar } from './components/HUD'
+import { StatsPanel, MiniMap, BottomToolbar, AudioPanel } from './components/HUD'
 import { CharacterPanel } from './components/CharacterPanel'
 import { EmployeeGrid } from './components/EmployeeGrid'
 import { StatsDashboard } from './components/StatsDashboard'
+import { audioManager } from './game/audioManager'
 import type { CharacterState, EmployeeStatus } from './game/simulation'
 import type { GameCallbacks } from './game/engine'
 
@@ -51,6 +52,8 @@ function App() {
   const [cameraRect, setCameraRect] = useState({ x: 0, y: 0, w: 100, h: 100 })
   const [selectedChar, setSelectedChar] = useState<CharacterState | null>(null)
   const [activePanel, setActivePanel] = useState<ActivePanel>(null)
+  const [audioMuted, setAudioMuted] = useState(false)
+  const [showAudioPanel, setShowAudioPanel] = useState(false)
   const { toasts, show: showToast } = useToast()
 
   const lastMiniMapUpdate = useRef(0)
@@ -71,6 +74,7 @@ function App() {
     }, []),
     onCharacterClick: useCallback((ch: CharacterState) => {
       setSelectedChar(ch)
+      audioManager.playNotification()
     }, []),
     onReady: useCallback(() => {
       setHudVisible(true)
@@ -78,6 +82,7 @@ function App() {
   }
 
   const handleEnter = () => {
+    audioManager.unlock()
     setShowLogin(false)
     setStarted(true)
   }
@@ -90,14 +95,52 @@ function App() {
   const togglePanel = (panel: ActivePanel) => {
     setActivePanel(prev => {
       const next = prev === panel ? null : panel
-      if (next !== null) showToast(PANEL_TOAST[next].icon, PANEL_TOAST[next].text)
+      if (next !== null) {
+        showToast(PANEL_TOAST[next].icon, PANEL_TOAST[next].text)
+        audioManager.playMenuOpen()
+      } else {
+        audioManager.playMenuClose()
+      }
       return next
     })
   }
 
+  const handleToggleMute = () => {
+    audioManager.toggleMute()
+    setAudioMuted(audioManager.muted)
+    audioManager.playClick()
+  }
+
+  // 云朵粒子数据（固定，仅用于渲染）
+  const clouds = [
+    { top: '12%', size: 90, delay: 0,  dur: 38 },
+    { top: '22%', size: 60, delay: 12, dur: 52 },
+    { top: '8%',  size: 110,delay: 25, dur: 44 },
+    { top: '30%', size: 75, delay: 6,  dur: 60 },
+    { top: '18%', size: 50, delay: 33, dur: 48 },
+  ]
+
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#060d18' }}>
       <PixelCanvas started={started} callbacks={callbacks} />
+
+      {/* 云朵粒子（视差背景叠加） */}
+      {started && clouds.map((c, i) => (
+        <div
+          key={i}
+          className="pixel-cloud"
+          style={{
+            top: c.top,
+            width: c.size,
+            height: c.size * 0.4,
+            animationDelay: `${c.delay}s`,
+            animationDuration: `${c.dur}s`,
+          }}
+        />
+      ))}
+
+      {/* 屏幕暗角 */}
+      {started && <div className="pixel-vignette" />}
 
       {showLogin && <LoginScreen onEnter={handleEnter} />}
 
@@ -109,8 +152,17 @@ function App() {
             onOpenGrid={() => togglePanel('grid')}
             onOpenDashboard={() => togglePanel('dashboard')}
             onSearch={() => togglePanel('grid')}
+            onToggleMute={handleToggleMute}
+            onOpenAudio={() => { setShowAudioPanel(p => !p); audioManager.playClick() }}
             activePanel={activePanel}
+            audioMuted={audioMuted}
+            masterVol={audioManager.masterVol}
           />
+
+          {/* 音量调节面板 */}
+          {showAudioPanel && (
+            <AudioPanel onClose={() => setShowAudioPanel(false)} />
+          )}
 
           {/* 角色详情面板 */}
           {selectedChar && (

@@ -356,3 +356,66 @@
   from { opacity: 1; transform: translateY(0) scale(1); }
   to   { opacity: 0; transform: translateY(-8px) scale(0.95); }
 }
+
+/* === 屏幕暗角 === */
+.pixel-vignette {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 38%, rgba(0, 0, 8, 0.65) 100%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* === 云朵粒子 === */
+.pixel-cloud {
+  position: fixed;
+  background: rgba(180, 210, 255, 0.12);
+  border-radius: 50%;
+  filter: blur(10px);
+  pointer-events: none;
+  z-index: 11;
+  animation: cloud-drift linear infinite;
+}
+
+@keyframes cloud-drift {
+  0%   { transform: translateX(-140px); opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 0.7; }
+  100% { transform: translateX(110vw); opacity: 0; }
+}
+
+/* === 音量滑块 === */
+.pixel-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  background: #0a1020;
+  border: 1px solid #2a3a5a;
+  outline: none;
+  cursor: pointer;
+}
+
+.pixel-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 18px;
+  background: #3a6ab5;
+  border: 2px solid #6a9aca;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+.pixel-range::-moz-range-thumb {
+  width: 12px;
+  height: 18px;
+  background: #3a6ab5;
+  border: 2px solid #6a9aca;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.pixel-range:hover::-webkit-slider-thumb {
+  background: #4a7ac5;
+  border-color: #8ab8e8;
+}
