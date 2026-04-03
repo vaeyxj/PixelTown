@@ -4,6 +4,7 @@ import { LoginScreen } from './components/LoginScreen'
 import { StatsPanel, MiniMap, BottomToolbar } from './components/HUD'
 import { CharacterPanel } from './components/CharacterPanel'
 import { EmployeeGrid } from './components/EmployeeGrid'
+import { StatsDashboard } from './components/StatsDashboard'
 import type { CharacterState, EmployeeStatus } from './game/simulation'
 import type { GameCallbacks } from './game/engine'
 
@@ -91,6 +92,15 @@ function App() {
                 const found = miniMapChars.find(c => c.employee.id === id)
                 if (found) setSelectedChar(found)
               }}
+            />
+          )}
+
+          {/* 团队仪表盘 */}
+          {activePanel === 'dashboard' && (
+            <StatsDashboard
+              onClose={() => setActivePanel(null)}
+              stats={stats}
+              timeStr={timeStr}
             />
           )}
 
