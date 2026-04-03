@@ -134,28 +134,19 @@ auto_commit_if_needed() {
 
 check_meaningful_change() {
   local before_hash="$1"
-
-  # 先检查是否有未提交的变更（排除 .autopilot 目录）
-  local uncommitted
-  uncommitted=$(git -C "$PROJECT_DIR" diff --stat HEAD -- . ':!.autopilot' 2>/dev/null | tail -1 | grep -oE '[0-9]+' | head -1)
-  if [[ "${uncommitted:-0}" -gt 0 ]]; then
-    return 0  # 有未提交的代码变更
-  fi
-
-  # 检查未跟踪文件（排除 .autopilot）
-  local untracked
-  untracked=$(git -C "$PROJECT_DIR" ls-files --others --exclude-standard -- . ':!.autopilot' 2>/dev/null | head -1)
-  if [[ -n "$untracked" ]]; then
-    return 0  # 有新文件
-  fi
-
-  # 检查 commit 差异
   local after_hash
   after_hash=$(get_last_commit)
+
+  # 简单判断：HEAD 变了就算有进展（Claude 或 auto_commit 产生了新 commit）
   if [[ "$before_hash" != "$after_hash" ]]; then
-    local lines_changed
-    lines_changed=$(git -C "$PROJECT_DIR" diff --stat "$before_hash" "$after_hash" 2>/dev/null | tail -1 | grep -oE '[0-9]+' | head -1)
-    [[ "${lines_changed:-0}" -gt 5 ]] && return 0
+    return 0
+  fi
+
+  # HEAD 没变但可能有未提交的文件变更
+  local dirty
+  dirty=$(git -C "$PROJECT_DIR" status --porcelain 2>/dev/null | grep -v '.autopilot/' | head -1)
+  if [[ -n "$dirty" ]]; then
+    return 0
   fi
 
   return 1  # 无变更
