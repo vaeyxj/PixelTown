@@ -1,0 +1,14 @@
+
+> web@0.0.0 lint /Users/yuxijian/claudeProjects/PixelTown/apps/web
+> eslint .
+
+
+/Users/yuxijian/claudeProjects/PixelTown/apps/web/src/game/pixelSprites.ts
+  322:63  error  '_text' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/yuxijian/claudeProjects/PixelTown/apps/web/src/game/simulation.ts
+  98:59  error  '_total' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 2 problems (2 errors, 0 warnings)
+
+ ELIFECYCLE  Command failed with exit code 1.

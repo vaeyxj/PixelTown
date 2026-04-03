@@ -12,6 +12,9 @@
 ###############################################################################
 set -uo pipefail
 
+# 确保 PATH 包含 claude CLI 和常用工具
+export PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
+
 PROJECT_DIR="/Users/yuxijian/claudeProjects/PixelTown"
 AUTOPILOT_DIR="$PROJECT_DIR/.autopilot"
 STATE_FILE="$AUTOPILOT_DIR/state.json"
@@ -30,6 +33,14 @@ TOTAL_PHASES=6
 # Claude 参数
 CLAUDE_MODEL="sonnet"                    # 用 sonnet 执行，性价比最优
 CLAUDE_TIMEOUT=600                       # 每次调用最大秒数
+
+# --- 启动检查 ---
+for cmd in claude pnpm git python3; do
+  if ! command -v "$cmd" &>/dev/null; then
+    echo "ERROR: '$cmd' not found in PATH. PATH=$PATH"
+    exit 1
+  fi
+done
 
 # --- 颜色输出 ---
 RED='\033[0;31m'
