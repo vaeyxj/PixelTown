@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { Application } from 'pixi.js'
 import { createGameEngine, type GameCallbacks, type GameEngine } from '../game/engine'
+import { preloadAll } from '../game/spriteLoader'
 
 interface Props {
   readonly started: boolean
@@ -50,6 +51,7 @@ export function PixelCanvas({ started, callbacks }: Props) {
       resizeObserver.observe(el)
 
       try {
+        await preloadAll()
         engineRef.current = createGameEngine(app, callbacks)
       } catch (err) {
         console.error('Engine init failed:', err)

@@ -21,8 +21,10 @@ export interface CharAppearance {
 
 /** 预生成的角色帧纹理集合 */
 export interface CharacterFrames {
-  /** frames[direction][frameIndex] */
+  /** Walk animation: frames[direction][frameIndex], 4 帧 */
   readonly frames: Record<Direction, readonly Texture[]>
+  /** Sit/type animation: 2 帧 (工作坐姿) */
+  readonly sit: readonly Texture[]
 }
 
 const SKIN_TONES = [0xffe0bd, 0xf5c9a0, 0xe8b887, 0xd4a574, 0xc68c53] as const
@@ -141,6 +143,62 @@ function drawCharFrame(
   }
 }
 
+/** 坐姿帧 — 角色在工位坐下打字 (16×24) */
+function drawSitFrame(
+  g: Graphics,
+  offsetX: number,
+  offsetY: number,
+  frame: number,
+  ap: CharAppearance,
+): void {
+  const x = offsetX
+  const y = offsetY
+  const skin = ap.skinColor
+  const hair = ap.hairColor
+  const shirt = ap.shirtColor
+  const pants = ap.pantsColor
+
+  // 阴影（小，被桌子遮挡）
+  g.ellipse(x + 8, y + 23, 3, 1).fill({ color: 0x000000, alpha: 0.12 })
+
+  // 头发后层
+  if (ap.hairStyle === 'long') {
+    px(g, x + 3, y + 2, 10, 8, hair)
+  }
+
+  // 头部（正面朝下，看键盘）
+  px(g, x + 4, y + 2, 8, 8, skin)
+  px(g, x + 3, y + 1, 10, 3, hair)
+  if (ap.hairStyle === 'spiky') {
+    px(g, x + 3, y, 2, 2, hair)
+    px(g, x + 7, y - 1, 2, 2, hair)
+    px(g, x + 11, y, 2, 2, hair)
+  } else if (ap.hairStyle === 'short') {
+    px(g, x + 3, y + 1, 10, 2, hair)
+  }
+  // 眼睛（低头看屏幕）
+  px(g, x + 5, y + 6, 2, 1, 0x1a1a2a)
+  px(g, x + 9, y + 6, 2, 1, 0x1a1a2a)
+
+  // 身体
+  px(g, x + 3, y + 10, 10, 7, shirt)
+  px(g, x + 4, y + 11, 2, 3, lighten(shirt, 20))
+  px(g, x + 11, y + 11, 1, 5, darken(shirt, 30))
+
+  // 手臂平放，第 frame=1 时轻微上移模拟打字
+  const typingOffset = frame === 1 ? -1 : 0
+  px(g, x + 1, y + 15 + typingOffset, 4, 2, shirt)
+  px(g, x + 1, y + 16 + typingOffset, 3, 1, skin)
+  px(g, x + 11, y + 15 + typingOffset, 4, 2, shirt)
+  px(g, x + 12, y + 16 + typingOffset, 3, 1, skin)
+
+  // 腿（坐姿，腿弯曲）
+  px(g, x + 4, y + 18, 4, 5, pants)
+  px(g, x + 8, y + 18, 4, 5, pants)
+  px(g, x + 2, y + 21, 5, 2, pants)
+  px(g, x + 9, y + 21, 5, 2, pants)
+}
+
 function lighten(color: number, amount: number): number {
   const r = Math.min(255, ((color >> 16) & 0xff) + amount)
   const gg = Math.min(255, ((color >> 8) & 0xff) + amount)
@@ -157,11 +215,12 @@ function darken(color: number, amount: number): number {
 
 /**
  * 生成角色所有帧的独立纹理 (预缓存，不在游戏循环中创建)
- * 返回 CharacterFrames，可通过 frames[direction][frameIndex] 获取
+ * 返回 CharacterFrames，包含行走帧和坐姿帧
  */
 export function generateCharacterFrames(app: Application, appearance: CharAppearance): CharacterFrames {
-  const sheetW = CHAR_W * FRAME_COUNT
-  const sheetH = CHAR_H * DIR_ORDER.length
+  const SIT_FRAMES = 2
+  const sheetW = CHAR_W * Math.max(FRAME_COUNT, SIT_FRAMES)
+  const sheetH = CHAR_H * (DIR_ORDER.length + 1) // +1 行坐姿
 
   // 1. 绘制整张精灵图到 RenderTexture
   const g = new Graphics()
@@ -170,6 +229,12 @@ export function generateCharacterFrames(app: Application, appearance: CharAppear
       drawCharFrame(g, fi * CHAR_W, di * CHAR_H, DIR_ORDER[di], fi, appearance)
     }
   }
+  // 坐姿帧（第 DIR_ORDER.length 行）
+  const sitRowY = DIR_ORDER.length * CHAR_H
+  for (let fi = 0; fi < SIT_FRAMES; fi++) {
+    drawSitFrame(g, fi * CHAR_W, sitRowY, fi, appearance)
+  }
+
   const rt = RenderTexture.create({ width: sheetW, height: sheetH })
   app.renderer.render({ container: g, target: rt })
   g.destroy()
@@ -185,5 +250,11 @@ export function generateCharacterFrames(app: Application, appearance: CharAppear
     }
   }
 
-  return { frames }
+  // 坐姿帧
+  const sit: Texture[] = []
+  for (let fi = 0; fi < SIT_FRAMES; fi++) {
+    sit.push(new Texture({ source: rt.source, frame: new Rectangle(fi * CHAR_W, sitRowY, CHAR_W, CHAR_H) }))
+  }
+
+  return { frames, sit }
 }

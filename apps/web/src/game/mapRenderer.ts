@@ -1,8 +1,9 @@
 /**
  * 地图渲染器 - 绘制地板、家具、墙壁、装饰
  * 不再管理摄像机和交互，只负责往 worldContainer 里添加图层
+ * 地板层使用 TilingSprite（若资源已预加载），降级为 Graphics
  */
-import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js'
+import { Application, Assets, Container, Graphics, Sprite, Text, TextStyle, Texture, TilingSprite } from 'pixi.js'
 import { MAP_ZONES, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, type MapZone } from './mapData'
 import {
   drawDeskPair,
@@ -164,6 +165,15 @@ function placeDecorations(g: Graphics): void {
   for (const [tx, ty] of coffees) drawCoffeeMachine(g, tx * T, ty * T)
 }
 
+/** 尝试从已预加载的 Assets 缓存获取 Texture，失败返回 null */
+function getCachedTexture(path: string): Texture | null {
+  try {
+    return Assets.get<Texture>(path) ?? null
+  } catch {
+    return null
+  }
+}
+
 /** 在 worldContainer 中创建所有地图图层，返回 destroy 函数 */
 export function createOfficeMap(
   app: Application,
@@ -172,10 +182,19 @@ export function createOfficeMap(
   const mw = MAP_WIDTH * TILE_SIZE
   const mh = MAP_HEIGHT * TILE_SIZE
 
-  // 1. 背景
-  const floor = new Graphics()
-  floor.rect(0, 0, mw, mh).fill(0xd8d0c0)
-  worldContainer.addChild(floor)
+  // 1. 背景 — 优先用 TilingSprite（sprite 渲染），降级为 Graphics
+  let floorSprite: Sprite | TilingSprite | Graphics
+  const floorTex = getCachedTexture('/tiles/floor.png')
+  if (floorTex) {
+    const ts = new TilingSprite({ texture: floorTex, width: mw, height: mh })
+    ts.tileScale.set(2) // 放大像素风格
+    floorSprite = ts
+  } else {
+    const g = new Graphics()
+    g.rect(0, 0, mw, mh).fill(0xd8d0c0)
+    floorSprite = g
+  }
+  worldContainer.addChild(floorSprite)
 
   // 2. 走廊
   const corridors = new Graphics()
