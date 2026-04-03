@@ -14,13 +14,14 @@ interface Props {
 }
 
 const STATUS_LABELS: Record<EmployeeStatus, { label: string; color: string; icon: string }> = {
-  working: { label: '工作中', color: '#4aba6a', icon: '💻' },
-  meeting: { label: '会议中', color: '#baba4a', icon: '🗣️' },
-  lunch:   { label: '午休中', color: '#8a6ab5', icon: '🍱' },
-  dinner:  { label: '晚餐中', color: '#b56a8a', icon: '🍽️' },
-  walking: { label: '走动中', color: '#4a9aba', icon: '🚶' },
-  idle:    { label: '空闲',   color: '#7a8a9a', icon: '😊' },
-  away:    { label: '未到',   color: '#4a4a5a', icon: '🏠' },
+  working:    { label: '工作中', color: '#4aba6a', icon: '💻' },
+  meeting:    { label: '会议中', color: '#baba4a', icon: '🗣️' },
+  lunch:      { label: '午休中', color: '#8a6ab5', icon: '🍱' },
+  dinner:     { label: '晚餐中', color: '#b56a8a', icon: '🍽️' },
+  exercising: { label: '健身中', color: '#5ab55a', icon: '💪' },
+  walking:    { label: '走动中', color: '#4a9aba', icon: '🚶' },
+  idle:       { label: '空闲',   color: '#7a8a9a', icon: '😊' },
+  away:       { label: '未到',   color: '#4a4a5a', icon: '🏠' },
 }
 
 // === 横向像素条形图 ===

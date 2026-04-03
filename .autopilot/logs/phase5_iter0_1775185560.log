@@ -1,0 +1,23 @@
+Phase 5 完成，验收结果：
+
+## 验收标准核查
+
+| 项目 | 状态 |
+|------|------|
+| 移动端虚拟摇杆 | ✓ `VirtualJoystick.tsx`，触控输入透传到游戏引擎 |
+| 移动端 UI 响应式 | ✓ CharacterPanel 移动端全屏，禁止双指缩放 |
+| Loading 屏 | ✓ 16 段像素进度条 + 随机趣味提示文字 |
+| PWA manifest + SW | ✓ `public/manifest.json` + `public/sw.js` |
+| `pnpm build` | ✓ exit 0，无错误 |
+| `pnpm test` | ✓ 11 tests passed |
+| 无 console.log | ✓ 原本即无残留 |
+| 文件 < 400 行 | ✓ 所有代码文件（data 文件除外） |
+
+## 主要新增文件
+- `VirtualJoystick.tsx` — 移动端摇杆
+- `LoadingScreen.tsx` — 像素进度条加载页
+- `CharacterTabs.tsx` — CharacterPanel Tab 内容拆分
+- `public/manifest.json` — PWA 配置
+- `public/sw.js` — Service Worker
+
+最终 commit: `release: PixelTown v1.0 - 商业交付版`

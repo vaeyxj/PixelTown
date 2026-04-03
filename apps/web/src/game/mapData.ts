@@ -13,6 +13,7 @@ export type ZoneType =
   | 'hallway'
   | 'service'
   | 'shared_desk'
+  | 'gym'
 
 export interface MapZone {
   readonly id: string
@@ -51,6 +52,9 @@ const COLORS = {
   exit: 0x7ab87a,
   hallway: 0xd4cbb8,
   sharedDesk: 0x8ab86a,
+
+  // Gym
+  gym: 0x5a7a5a,
 
   // Borders
   borderDark: 0x2a2a2a,
@@ -576,6 +580,23 @@ const bottomRightRooms: readonly MapZone[] = [
   },
 ]
 
+// ========== GYM AREA ==========
+
+const gymArea: readonly MapZone[] = [
+  {
+    id: 'gym',
+    name: '💪 健身房',
+    type: 'gym',
+    x: 65,
+    y: 38,
+    width: 14,
+    height: 10,
+    color: COLORS.gym,
+    borderColor: COLORS.borderDark,
+    label: '健身房 GYM',
+  },
+]
+
 // Combine all zones
 export const MAP_ZONES: readonly MapZone[] = [
   ...topLeftRooms,
@@ -589,4 +610,5 @@ export const MAP_ZONES: readonly MapZone[] = [
   ...farRightRooms,
   ...bottomWorkstations,
   ...bottomRightRooms,
+  ...gymArea,
 ]

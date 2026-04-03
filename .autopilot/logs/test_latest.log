@@ -6,10 +6,10 @@
 [1m[46m RUN [49m[22m [36mv4.1.2 [39m[90m/Users/yuxijian/claudeProjects/PixelTown/apps/web[39m
 
  [32m✓[39m src/__tests__/employees.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
- [32m✓[39m src/__tests__/simulation.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/__tests__/simulation.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 10[2mms[22m[39m
 
 [2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
 [2m      Tests [22m [1m[32m11 passed[39m[22m[90m (11)[39m
-[2m   Start at [22m 11:03:28
-[2m   Duration [22m 1.28s[2m (transform 149ms, setup 0ms, import 218ms, tests 14ms, environment 1.72s)[22m
+[2m   Start at [22m 11:32:15
+[2m   Duration [22m 1.29s[2m (transform 188ms, setup 0ms, import 229ms, tests 15ms, environment 1.71s)[22m
 

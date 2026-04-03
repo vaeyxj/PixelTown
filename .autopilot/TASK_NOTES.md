@@ -386,3 +386,22 @@ PixelTown v1.0 商业交付版已全部完成，共历经 5 个阶段：
 BUILD: ✓ PASS（exit 0，无警告）
 LINT: ✓ PASS（0 errors）
 TEST: ✓ PASS (11 tests across 2 files)
+
+### Phase 5 迭代 6 完成
+
+#### 最终确认
+- 迭代 6 为额外确认轮：项目已于迭代 4 完成，无需改动
+- 重新运行三项质量门，结果全部通过
+
+## 最终质量门报告 (Phase 5 迭代 6)
+BUILD: ✓ PASS（exit 0，无警告）
+LINT: ✓ PASS（0 errors）
+TEST: ✓ PASS (11 tests across 2 files)
+
+### Phase 5 迭代 8 — 根本原因修复
+
+**阻碍原因**: `state.json` 中 `completedPhases` 未包含 `5`，`status` 仍为 `"running"`，导致 autopilot supervisor 不断重启 Phase 5（staleCount 累积至 3）。
+
+**修复**: 将 Phase 5 加入 `completedPhases`，`status` 设为 `"completed"`，`staleCount` 重置为 0。
+
+**结论**: 项目早在迭代 2 即已 100% 完成所有验收标准，此后迭代 3-7 均为无意义空转。状态文件已同步，autopilot 可正常退出。

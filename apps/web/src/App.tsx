@@ -69,7 +69,7 @@ function App() {
 
   // HUD state
   const [stats, setStats] = useState<Record<EmployeeStatus, number>>({
-    working: 0, meeting: 0, lunch: 0, dinner: 0, walking: 0, idle: 0, away: 0,
+    working: 0, meeting: 0, lunch: 0, dinner: 0, walking: 0, idle: 0, away: 0, exercising: 0,
   })
   const [timeStr, setTimeStr] = useState('09:50')
   const [onlineCount, setOnlineCount] = useState(0)

@@ -40,6 +40,7 @@ export interface NpcManager {
 }
 
 const WORKING_STATUSES: ReadonlySet<EmployeeStatus> = new Set(['working'])
+const SITTING_STATUSES: ReadonlySet<EmployeeStatus> = new Set(['meeting'])
 
 export function createNpcManager(
   app: Application,
@@ -132,9 +133,21 @@ export function createNpcManager(
         shadow.y = state.y
 
         // 动画状态选择
+        const isExercising = state.status === 'exercising'
         const isAtDesk = WORKING_STATUSES.has(state.status) && state.animFrame === 0
         const isIdle = state.status === 'idle' || state.status === 'away'
-        if (isAtDesk && charFrames.sit.length > 0) {
+        const isInMeeting = SITTING_STATUSES.has(state.status) && state.animFrame === 0
+        if (isExercising) {
+          // 健身中：快速走路动画模拟跑步/运动
+          entry.sitTimer += dt
+          const exFrame = Math.floor(entry.sitTimer * 4) % 4
+          sprite.texture = charFrames.frames['down'][exFrame]
+        } else if (isInMeeting && charFrames.sit.length > 0) {
+          // 会议中：坐在椅子上
+          entry.sitTimer += dt
+          const sitFrame = Math.floor(entry.sitTimer * 1.5) % 2
+          sprite.texture = charFrames.sit[sitFrame]
+        } else if (isAtDesk && charFrames.sit.length > 0) {
           entry.sitTimer += dt
           const sitFrame = Math.floor(entry.sitTimer * 2) % 2
           sprite.texture = charFrames.sit[sitFrame]

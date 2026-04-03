@@ -318,6 +318,50 @@ export function drawCoffeeMachine(g: Graphics, px: number, py: number): void {
   g.rect(px, py + 10, 10, 2).fill(C.machineDark)
 }
 
+/** 绘制跑步机，尺寸约 16x20 px */
+export function drawTreadmill(g: Graphics, px: number, py: number): void {
+  // 底座
+  g.rect(px + 1, py + 14, 14, 5).fill(0x4a4a4a)
+  g.rect(px + 2, py + 15, 12, 3).fill(0x3a3a3a)
+  // 跑带
+  g.rect(px + 2, py + 8, 12, 7).fill(0x5a5a5a)
+  g.rect(px + 3, py + 9, 10, 5).fill(0x6a6a6a)
+  // 扶手
+  g.rect(px + 1, py + 2, 2, 12).fill(0x8a8a8a)
+  g.rect(px + 13, py + 2, 2, 12).fill(0x8a8a8a)
+  // 显示屏
+  g.rect(px + 4, py, 8, 4).fill(0x2a2a2a)
+  g.rect(px + 5, py + 1, 6, 2).fill(0x4aba6a)
+}
+
+/** 绘制哑铃架，尺寸约 14x16 px */
+export function drawDumbbellRack(g: Graphics, px: number, py: number): void {
+  // 架子
+  g.rect(px + 2, py + 2, 10, 12).fill(0x6a5a4a)
+  g.rect(px + 2, py + 2, 10, 2).fill(0x7a6a5a)
+  // 哑铃（3层）
+  for (let i = 0; i < 3; i++) {
+    const dy = py + 4 + i * 4
+    // 左片
+    g.rect(px + 3, dy, 2, 3).fill(0x3a3a3a)
+    // 杆
+    g.rect(px + 5, dy + 1, 4, 1).fill(0x8a8a8a)
+    // 右片
+    g.rect(px + 9, dy, 2, 3).fill(0x3a3a3a)
+  }
+  // 底座
+  g.rect(px + 1, py + 14, 12, 2).fill(0x5a4a3a)
+}
+
+/** 绘制瑜伽垫，尺寸约 12x20 px */
+export function drawYogaMat(g: Graphics, px: number, py: number): void {
+  g.rect(px + 1, py + 2, 10, 16).fill(0x6a5aaa)
+  g.rect(px + 2, py + 3, 8, 14).fill(0x7a6aba)
+  // 卷起的一端
+  g.rect(px + 1, py, 10, 3).fill(0x5a4a9a)
+  g.circle(px + 6, py + 1, 2).fill(0x6a5aaa)
+}
+
 /** 绘制指示牌/标识，尺寸约 12x14 px */
 export function drawSign(g: Graphics, px: number, py: number, _text: string): void {
   // 牌子

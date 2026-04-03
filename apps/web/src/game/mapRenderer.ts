@@ -17,6 +17,9 @@ import {
   drawCorridorFloor,
   drawWoodFloor,
   drawCarpetFloor,
+  drawTreadmill,
+  drawDumbbellRack,
+  drawYogaMat,
 } from './pixelSprites'
 
 function fillWorkstationZone(g: Graphics, zone: MapZone): void {
@@ -105,6 +108,44 @@ function fillExitZone(g: Graphics, zone: MapZone): void {
     .lineTo(cx - 4, cy + 4).closePath().fill(0xffffff)
 }
 
+function fillGymZone(g: Graphics, zone: MapZone): void {
+  const px = zone.x * TILE_SIZE
+  const py = zone.y * TILE_SIZE
+  const pw = zone.width * TILE_SIZE
+  const ph = zone.height * TILE_SIZE
+
+  // 橡胶地板
+  for (let x = 0; x < pw; x += 8) {
+    for (let y = 0; y < ph; y += 8) {
+      const isLight = ((x + y) / 8) % 2 === 0
+      g.rect(px + x, py + y, 8, 8).fill(isLight ? 0x4a5a4a : 0x3a4a3a)
+    }
+  }
+
+  // 跑步机（左侧 2 台）
+  drawTreadmill(g, px + 8, py + 10)
+  drawTreadmill(g, px + 28, py + 10)
+
+  // 哑铃架（中间）
+  drawDumbbellRack(g, px + 52, py + 8)
+  drawDumbbellRack(g, px + 70, py + 8)
+
+  // 瑜伽垫（右侧 3 个）
+  drawYogaMat(g, px + 96, py + 10)
+  drawYogaMat(g, px + 112, py + 10)
+  drawYogaMat(g, px + 128, py + 10)
+
+  // 大镜子（顶部墙上）
+  const mirrorW = Math.min(pw - 20, 80)
+  const mirrorX = px + (pw - mirrorW) / 2
+  g.rect(mirrorX, py + 4, mirrorW, 16).fill(0xc0d8ea)
+  g.rect(mirrorX, py + 4, mirrorW, 16).stroke({ color: 0xa0b0c0, width: 1 })
+
+  // 饮水机
+  g.rect(px + pw - 16, py + ph - 22, 6, 10).fill(0xb0b8c0)
+  g.rect(px + pw - 17, py + ph - 24, 8, 4).fill(0xb0d8f0)
+}
+
 function fillServiceZone(g: Graphics, zone: MapZone): void {
   const px = zone.x * TILE_SIZE
   const py = zone.y * TILE_SIZE
@@ -134,7 +175,7 @@ function drawWalls(g: Graphics, zone: MapZone): void {
   const pw = zone.width * TILE_SIZE
   const ph = zone.height * TILE_SIZE
 
-  if (zone.type === 'meeting_room' || zone.type === 'restroom' || zone.type === 'storage' || zone.type === 'service') {
+  if (zone.type === 'meeting_room' || zone.type === 'restroom' || zone.type === 'storage' || zone.type === 'service' || zone.type === 'gym') {
     g.rect(px, py, pw, 4).fill(0x9a8a7a)
     g.rect(px, py, 3, ph).fill(0xb8a890)
     g.rect(px + pw - 3, py, 3, ph).fill(0xb8a890)
@@ -223,6 +264,9 @@ export function createOfficeMap(
         break
       case 'service':
         fillServiceZone(staticG, zone)
+        break
+      case 'gym':
+        fillGymZone(staticG, zone)
         break
     }
   }

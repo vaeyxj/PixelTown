@@ -27,13 +27,14 @@ interface ToolbarProps {
 }
 
 const STATUS_LABELS: Record<EmployeeStatus, { label: string; color: string; icon: string }> = {
-  working:  { label: '工作中', color: '#4a9a5a', icon: '💻' },
-  meeting:  { label: '会议中', color: '#b58a4a', icon: '🗣️' },
-  lunch:    { label: '午休中', color: '#8a6ab5', icon: '🍱' },
-  dinner:   { label: '晚餐中', color: '#b56a8a', icon: '🍽️' },
-  walking:  { label: '走动中', color: '#5aaab5', icon: '🚶' },
-  idle:     { label: '空闲',   color: '#7a8a9a', icon: '😊' },
-  away:     { label: '未到',   color: '#4a4a5a', icon: '🏠' },
+  working:     { label: '工作中', color: '#4a9a5a', icon: '💻' },
+  meeting:     { label: '会议中', color: '#b58a4a', icon: '🗣️' },
+  lunch:       { label: '午休中', color: '#8a6ab5', icon: '🍱' },
+  dinner:      { label: '晚餐中', color: '#b56a8a', icon: '🍽️' },
+  exercising:  { label: '健身中', color: '#5ab55a', icon: '💪' },
+  walking:     { label: '走动中', color: '#5aaab5', icon: '🚶' },
+  idle:        { label: '空闲',   color: '#7a8a9a', icon: '😊' },
+  away:        { label: '未到',   color: '#4a4a5a', icon: '🏠' },
 }
 
 // 像素时钟数字（单个字符）
@@ -98,7 +99,7 @@ export function StatsPanel({ stats, timeStr, onlineCount }: StatsProps) {
       {/* 状态列表 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {(Object.entries(STATUS_LABELS) as [EmployeeStatus, typeof STATUS_LABELS[EmployeeStatus]][])
-          .filter(([k]) => k !== 'away' && k !== 'walking' && k !== 'idle')
+          .filter(([k]) => !['away', 'walking', 'idle'].includes(k))
           .map(([key, { label, color, icon }]) => (
             <div
               key={key}
@@ -155,6 +156,7 @@ export function MiniMap({ characters, cameraRect }: MiniMapProps) {
       if (ch.x < 0) continue
       ctx.fillStyle = ch.status === 'working' ? '#4aba6a'
         : ch.status === 'meeting' ? '#baba4a'
+        : ch.status === 'exercising' ? '#5ab55a'
         : ch.status === 'walking' ? '#4a9aba'
         : '#6a7a8a'
       ctx.fillRect(ch.x * sx - 1, ch.y * sy - 1, 2, 2)

@@ -1,0 +1,11 @@
+# Logs
+*.log
+
+# Autopilot logs & temp files
+.autopilot/logs/
+
+# OS
+.DS_Store
+
+# Node
+node_modules/

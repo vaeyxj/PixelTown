@@ -14,7 +14,7 @@
 import { TILE_SIZE, MAP_ZONES, type MapZone } from './mapData'
 import type { Direction } from './characterSprite'
 
-export type EmployeeStatus = 'working' | 'meeting' | 'lunch' | 'dinner' | 'walking' | 'idle' | 'away'
+export type EmployeeStatus = 'working' | 'meeting' | 'lunch' | 'dinner' | 'walking' | 'idle' | 'away' | 'exercising'
 
 export interface Employee {
   readonly id: number
@@ -173,6 +173,18 @@ export function getEntrancePosition(): { x: number; y: number } {
   return { x: 80, y: 180 }
 }
 
+/** 生成健身房内的随机位置 */
+function gymPosition(empId: number): { status: EmployeeStatus; targetX: number; targetY: number } {
+  const gym = MAP_ZONES.find(z => z.id === 'gym')
+  if (!gym) return { status: 'idle', targetX: 0, targetY: 0 }
+  const rng = seededRandom(empId * 777)
+  return {
+    status: 'exercising',
+    targetX: gym.x * TILE_SIZE + 12 + rng() * (gym.width * TILE_SIZE - 28),
+    targetY: gym.y * TILE_SIZE + 12 + rng() * (gym.height * TILE_SIZE - 28),
+  }
+}
+
 /** 根据当前时间计算员工应处的状态和目标位置 */
 export function computeEmployeeState(
   emp: Employee,
@@ -213,7 +225,12 @@ export function computeEmployeeState(
   // 午休
   if (timeMin >= lunchStart && timeMin < lunchEnd) {
     const rng = seededRandom(emp.id + 999)
-    if (rng() < 0.4) {
+    const roll = rng()
+    if (roll < 0.15) {
+      // 去健身房
+      return gymPosition(emp.id)
+    }
+    if (roll < 0.55) {
       // 留在工位休息
       return { status: 'lunch', targetX: emp.deskOffsetX, targetY: emp.deskOffsetY }
     }
@@ -224,7 +241,12 @@ export function computeEmployeeState(
   // 晚饭
   if (timeMin >= dinnerStart && timeMin < dinnerEnd) {
     const rng = seededRandom(emp.id + 888)
-    if (rng() < 0.3) {
+    const roll = rng()
+    if (roll < 0.12) {
+      // 去健身房
+      return gymPosition(emp.id)
+    }
+    if (roll < 0.42) {
       return { status: 'dinner', targetX: emp.deskOffsetX, targetY: emp.deskOffsetY }
     }
     return { status: 'dinner', targetX: -100, targetY: -100 }
@@ -310,7 +332,7 @@ export function updateCharacters(chars: CharacterState[], dt: number, hour: numb
 /** 统计当前各状态人数 */
 export function getStatusCounts(chars: readonly CharacterState[]): Record<EmployeeStatus, number> {
   const counts: Record<EmployeeStatus, number> = {
-    working: 0, meeting: 0, lunch: 0, dinner: 0, walking: 0, idle: 0, away: 0,
+    working: 0, meeting: 0, lunch: 0, dinner: 0, walking: 0, idle: 0, away: 0, exercising: 0,
   }
   for (const ch of chars) {
     counts[ch.status]++
@@ -318,53 +340,53 @@ export function getStatusCounts(chars: readonly CharacterState[]): Record<Employ
   return counts
 }
 
-/** 模拟时间：在 9:00~22:00 范围内循环播放 */
+/** 真实时间时钟 — 与物理世界时间保持一致 */
 export class SimClock {
-  private startReal: number
-  private speed: number
-
-  constructor(startHour = 9, startMinute = 50, speed = 10) {
-    this.startReal = Date.now()
-    this.speed = speed
-    // 存起始游戏分钟
-    this._startGameMin = startHour * 60 + startMinute
-  }
-
-  private _startGameMin: number
-
   getTime(): { hour: number; minute: number; timeStr: string } {
-    const elapsedReal = (Date.now() - this.startReal) / 1000 // 秒
-    const elapsedGameMin = elapsedReal * this.speed / 60 // 游戏分钟
-    // 在 9:00 (540) ~ 22:00 (1320) 之间循环，共 780 分钟
-    const totalGameMin = this._startGameMin + elapsedGameMin
-    const dayMin = 540 + ((totalGameMin - 540) % 780) // 循环
-    const hour = Math.floor(dayMin / 60)
-    const minute = Math.floor(dayMin % 60)
+    const now = new Date()
+    const hour = now.getHours()
+    const minute = now.getMinutes()
     return {
       hour,
       minute,
       timeStr: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
     }
   }
-
-  setSpeed(s: number): void { this.speed = s }
 }
 
-/** 根据小时返回天色遮罩颜色和透明度 */
+/** 根据小时返回天色遮罩颜色和透明度（完整 24 小时周期） */
 export function getDaylightOverlay(hour: number, minute: number): { color: number; alpha: number } {
   const t = hour + minute / 60
+  // 完整 24 小时光照表：[截止时刻, 色调, 透明度]
   const table: [number, number, number][] = [
-    [10, 0x1a2040, 0.15], [12, 0x000000, 0], [14, 0xffa830, 0.04],
-    [17, 0x000000, 0], [19, 0xff8020, 0.08], [20, 0x1a1840, 0.15],
+    [5,  0x0a0820, 0.35],   // 深夜
+    [6,  0x1a1840, 0.28],   // 黎明前
+    [7,  0x2a3060, 0.18],   // 破晓
+    [8,  0x4a6080, 0.08],   // 清晨
+    [10, 0x000000, 0],      // 上午
+    [12, 0x000000, 0],      // 正午
+    [14, 0xffa830, 0.03],   // 午后暖光
+    [17, 0x000000, 0],      // 下午
+    [18, 0xff8020, 0.06],   // 傍晚
+    [19, 0xff6020, 0.12],   // 日落
+    [20, 0x1a1840, 0.2],    // 黄昏
+    [21, 0x0a0820, 0.28],   // 入夜
   ]
   const found = table.find(([h]) => t < h)
-  return found ? { color: found[1], alpha: found[2] } : { color: 0x0a0820, alpha: 0.25 }
+  return found ? { color: found[1], alpha: found[2] } : { color: 0x0a0820, alpha: 0.35 }
+}
+
+/** 获取当前的黑暗程度 0~1 (用于灯光系统) */
+export function getDarknessLevel(hour: number, minute: number): number {
+  const { alpha } = getDaylightOverlay(hour, minute)
+  return alpha
 }
 
 /** 状态对应的 emoji */
 export const STATUS_EMOJI: Record<EmployeeStatus, string> = {
   working: '💻', meeting: '🗣️', lunch: '🍱',
   dinner: '🍽️', walking: '🚶', idle: '😊', away: '',
+  exercising: '💪',
 }
 
 const CHAT_MESSAGES = [

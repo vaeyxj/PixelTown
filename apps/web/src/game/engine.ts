@@ -20,6 +20,9 @@ import { createBubbleSystem } from './bubbleSystem'
 import { createParticleSystem } from './particleSystem'
 import { applyParallax, createBackgroundLayer, createForegroundLayer } from './parallax'
 import { createDayNightSystem } from './dayNightSystem'
+import { createCollisionGrid, tryMove } from './collisionMap'
+import { createLightingSystem } from './lightingSystem'
+import { createDoorSystem } from './doorSystem'
 
 export interface GameCallbacks {
   onStatsUpdate: (stats: Record<EmployeeStatus, number>, timeStr: string, onlineCount: number) => void
@@ -70,12 +73,14 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
   worldContainer.addChild(particleLayer)
 
   const employees = generateEmployees(60)
-  const clock = new SimClock(10, 30, 30)
+  const clock = new SimClock()
   const { hour, minute } = clock.getTime()
   const characters = initCharacterStates(employees, hour, minute)
 
   const particleSystem = createParticleSystem(particleLayer)
   const dayNightSystem = createDayNightSystem(worldContainer, worldW, worldH, particleSystem)
+  const doorSystem = createDoorSystem(worldContainer)
+  const lightingSystem = createLightingSystem(worldContainer)
   const npcManager = createNpcManager(app, characterLayer, shadowLayer, emojiLayer, nameTagLayer, characters, callbacks.onCharacterClick, particleSystem)
 
   const playerFrames = generateCharacterFrames(app, { ...generateAppearance(9999), shirtColor: 0xe84040 })
@@ -114,6 +119,8 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
   playerNameTag.anchor.set(0.5, 1)
   nameTagLayer.addChild(playerNameTag)
 
+  const collisionGrid = createCollisionGrid()
+
   const parallaxLayers = [{ container: bgLayer, scrollFactor: 0.3 }, { container: fgLayer, scrollFactor: 1.05 }]
   const bubbleSystem = createBubbleSystem(bubbleLayer)
   const playerController = createPlayerController()
@@ -145,8 +152,11 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
     // 玩家移动
     const { dx, dy } = playerController.getInput()
     if (dx !== 0 || dy !== 0) {
-      playerState.x = Math.max(8, Math.min(worldW - 8, playerState.x + dx * PLAYER_SPEED * dt))
-      playerState.y = Math.max(8, Math.min(worldH - 8, playerState.y + dy * PLAYER_SPEED * dt))
+      const wantX = Math.max(8, Math.min(worldW - 8, playerState.x + dx * PLAYER_SPEED * dt))
+      const wantY = Math.max(8, Math.min(worldH - 8, playerState.y + dy * PLAYER_SPEED * dt))
+      const moved = tryMove(collisionGrid, playerState.x, playerState.y, wantX, wantY)
+      playerState.x = moved.x
+      playerState.y = moved.y
       playerState.direction = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up')
       playerState.animTimer += dt
       if (playerState.animTimer > 0.12) { playerState.animTimer = 0; playerState.animFrame = (playerState.animFrame + 1) % 4 }
@@ -169,16 +179,18 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
     playerNameTag.y = playerState.y - CHAR_H * 2 - 8
 
     const vp = { x: -worldContainer.x / camera.scale, y: -worldContainer.y / camera.scale, w: app.screen.width / camera.scale, h: app.screen.height / camera.scale }
+    doorSystem.update(dt, characters)
     npcManager.update(dt, h, m, emojiAnimTime, bubbleSystem.talkingIds, vp)
     bubbleSystem.update(dt, npcManager.entries)
     particleSystem.update(dt)
     dayNightSystem.update(h, m, dt, worldContainer.x, worldContainer.y, camera.scale, app.screen.width, app.screen.height, lowPerf)
+    lightingSystem.update(h, m, characters)
 
     camera.update(playerState.x, playerState.y)
     applyParallax(parallaxLayers, worldContainer.x, worldContainer.y, app.screen.width, app.screen.height)
 
     const s = camera.scale
-    const statuses = ['working', 'meeting', 'lunch', 'dinner', 'walking', 'idle', 'away'] as const
+    const statuses = ['working', 'meeting', 'lunch', 'dinner', 'walking', 'idle', 'away', 'exercising'] as const
     const stats = Object.fromEntries(statuses.map(k => [k, characters.filter(c => c.status === k).length])) as Record<EmployeeStatus, number>
     callbacks.onStatsUpdate(stats, timeStr, characters.filter(c => c.x > 0).length)
     callbacks.onMiniMapUpdate(characters, { x: -worldContainer.x / s, y: -worldContainer.y / s, w: app.screen.width / s, h: app.screen.height / s })
@@ -195,6 +207,8 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
       bubbleSystem.destroy()
       particleSystem.destroy()
       dayNightSystem.destroy()
+      lightingSystem.destroy()
+      doorSystem.destroy()
       destroyMap()
       bgLayer.destroy({ children: true })
       fgLayer.destroy({ children: true })
