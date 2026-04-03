@@ -134,8 +134,59 @@ Phase 2 完整交付 ✓
 - floor.png 为 TilingSprite，tileScale=2 放大像素风格
 - 30 个员工数据含完整属性系统（五维属性、技能树、里程碑、博客）
 
+### Phase 3 迭代 1 完成
+
+#### 3g. CSS 设计系统 (`src/styles/pixel-ui.css`)
+- `.pixel-window` / `.pixel-window-header` / `.pixel-window-title`
+- `.pixel-btn`, `.pixel-btn-primary`, `.pixel-btn-close`, `.pixel-btn-ghost`
+- `.pixel-border`, `.pixel-input`, `.pixel-progress`, `.pixel-badge`
+- `.pixel-slot`, `.pixel-tab-bar`, `.pixel-tab`
+- `.pixel-led`: LED 绿色发光数字
+- `@keyframes`: pixel-bounce / pixel-fade-in / pixel-slide-up / pixel-open / scan-line / cursor-blink / float-particle
+
+#### 3a. 登录页重做 (`LoginScreen.tsx`)
+- 打字机效果：`PIXEL TOWN` 逐字出现（80ms/字），光标闪烁
+- 副标题淡入（打字完成后 200ms）
+- 按钮渐显（600ms），使用 `.pixel-btn-primary`
+- 24 个漂浮彩色光斑粒子（canvas-free，pure CSS animation）
+- 更精细的 SVG 像素建筑（路灯、大门灯光、远景楼群）
+
+#### 3b. HUD 重做 (`HUD.tsx`)
+- `StatsPanel`: LED 数字时钟（`pixel-led`），像素窗口边框，在线人数 LED 显示
+- `MiniMap`: pixel-window 边框，RADAR 标题，CRT 扫描线动画，格栅叠加效果
+- `BottomToolbar`: 6 格工具栏（MAP/ROSTER/STATS/SEARCH/CONFIG/AUDIO），`.pixel-slot` 样式
+
+#### 3c. 角色详情面板 (`CharacterPanel.tsx` — 新文件)
+- 可拖拽 RPG 窗口（mousedown/mousemove/mouseup）
+- 4 个选项卡：概览 / 技能 / 博客 / 成长
+- 概览：像素头像 + 五维雷达图（Canvas）+ 属性条 + 标签
+- 技能：技能列表 + 像素格进度条（PixelBar 10格）
+- 博客：可折叠博客列表 + 标签
+- 成长：时间轴里程碑
+
+#### 3d. 员工图鉴 (`EmployeeGrid.tsx` — 新文件)
+- 全屏 pixel-window，网格卡片布局
+- 部门彩色标签筛选 + 搜索输入框
+- 排序：姓名/教学力/研发力/创造力
+- 卡片：头像 SVG + 职级徽章 + motto
+
+#### App.tsx 更新
+- 接入 `CharacterPanel`（替代 `CharacterCard`）
+- 接入 `EmployeeGrid`（工具栏 ROSTER 按钮触发）
+- `BottomToolbar` 替代旧操作提示
+
+Phase 3 验收标准核查：
+- [x] 登录页有打字机效果和进入动画
+- [x] HUD 有 RPG 风格状态栏（LED 时钟 + 像素窗口）+ 底部快捷栏
+- [x] 点击角色弹出完整角色详情面板（雷达图、技能、博客、时间线）
+- [x] 员工图鉴可打开，支持搜索和部门筛选
+- [ ] 统计仪表盘（待实现）
+- [x] 所有 UI 像素风一致
+- [x] `pnpm build` exit 0
+- [x] `pnpm test` 通过 (11 tests)
+
 ## 阻碍
-- 无当前阻碍
+- 无当前阻碍（Phase 2 卡住根因：checker_phase2_result.txt 过期，state.json 未推进；已修复，推进至 Phase 3）
 
 ## 上次质量门报告 (Phase 2 迭代 6)
 BUILD: ✓ PASS

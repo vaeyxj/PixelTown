@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react'
 import { MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, MAP_ZONES } from '../game/mapData'
 import type { CharacterState, EmployeeStatus } from '../game/simulation'
+import '../styles/pixel-ui.css'
 
 interface StatsProps {
   readonly stats: Record<EmployeeStatus, number>
@@ -13,76 +14,94 @@ interface MiniMapProps {
   readonly cameraRect: { x: number; y: number; w: number; h: number }
 }
 
-interface CharCardProps {
-  readonly char: CharacterState | null
-  readonly onClose: () => void
+interface ToolbarProps {
+  readonly onOpenGrid: () => void
+  readonly onOpenDashboard: () => void
+  readonly activePanel: string | null
 }
 
 const STATUS_LABELS: Record<EmployeeStatus, { label: string; color: string; icon: string }> = {
-  working: { label: '工作中', color: '#4a9a5a', icon: '💻' },
-  meeting: { label: '会议中', color: '#b58a4a', icon: '🗣️' },
-  lunch: { label: '午休中', color: '#8a6ab5', icon: '🍱' },
-  dinner: { label: '晚餐中', color: '#b56a8a', icon: '🍽️' },
-  walking: { label: '走动中', color: '#5aaab5', icon: '🚶' },
-  idle: { label: '空闲', color: '#7a8a9a', icon: '😊' },
-  away: { label: '未到', color: '#4a4a5a', icon: '🏠' },
+  working:  { label: '工作中', color: '#4a9a5a', icon: '💻' },
+  meeting:  { label: '会议中', color: '#b58a4a', icon: '🗣️' },
+  lunch:    { label: '午休中', color: '#8a6ab5', icon: '🍱' },
+  dinner:   { label: '晚餐中', color: '#b56a8a', icon: '🍽️' },
+  walking:  { label: '走动中', color: '#5aaab5', icon: '🚶' },
+  idle:     { label: '空闲',   color: '#7a8a9a', icon: '😊' },
+  away:     { label: '未到',   color: '#4a4a5a', icon: '🏠' },
+}
+
+// 像素时钟数字（单个字符）
+function PixelDigit({ ch }: { ch: string }) {
+  return (
+    <span
+      className="pixel-led"
+      style={{ fontSize: 24, lineHeight: 1, display: 'inline-block', minWidth: ch === ':' ? 10 : 18 }}
+    >
+      {ch}
+    </span>
+  )
 }
 
 export function StatsPanel({ stats, timeStr, onlineCount }: StatsProps) {
+  const digits = timeStr.split('')
+
   return (
     <div
+      className="pixel-window"
       style={{
         position: 'fixed',
         top: 16,
         left: 16,
-        background: 'rgba(15, 20, 30, 0.88)',
-        border: '1px solid rgba(74, 138, 186, 0.3)',
-        borderRadius: 8,
-        padding: '12px 16px',
-        minWidth: 180,
-        backdropFilter: 'blur(8px)',
+        padding: '10px 14px',
+        minWidth: 190,
         zIndex: 50,
+        animation: 'pixel-fade-in 0.3s ease-out',
       }}
     >
-      {/* 时钟 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <span style={{ fontSize: 20 }}>🕐</span>
-        <span
-          style={{
-            fontFamily: 'monospace',
-            fontSize: 22,
-            fontWeight: 700,
-            color: '#e8e0d0',
-            letterSpacing: 2,
-          }}
-        >
-          {timeStr}
-        </span>
+      {/* LED 时钟 */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 0,
+        marginBottom: 8,
+        padding: '6px 8px',
+        background: '#04080f',
+        border: '1px solid #1a3a1a',
+        justifyContent: 'center',
+      }}>
+        {digits.map((ch, i) => <PixelDigit key={i} ch={ch} />)}
       </div>
 
+      {/* 在线人数 */}
       <div style={{
-        fontSize: 12,
-        color: '#7a9aba',
-        marginBottom: 10,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        fontSize: 11,
+        color: '#4a6a5a',
+        marginBottom: 8,
         paddingBottom: 8,
-        borderBottom: '1px solid rgba(74, 138, 186, 0.2)',
+        borderBottom: '1px solid #1a3a2a',
+        fontFamily: 'monospace',
       }}>
-        在线 <span style={{ color: '#4aba6a', fontWeight: 700, fontSize: 14 }}>{onlineCount}</span> 人
+        <span>在线</span>
+        <span className="pixel-led" style={{ fontSize: 16 }}>{onlineCount}</span>
+        <span style={{ fontSize: 10 }}>人</span>
       </div>
 
       {/* 状态列表 */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {Object.entries(STATUS_LABELS)
-          .filter(([key]) => key !== 'away' && key !== 'walking' && key !== 'idle')
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {(Object.entries(STATUS_LABELS) as [EmployeeStatus, typeof STATUS_LABELS[EmployeeStatus]][])
+          .filter(([k]) => k !== 'away' && k !== 'walking' && k !== 'idle')
           .map(([key, { label, color, icon }]) => (
             <div
               key={key}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}
             >
-              <span style={{ fontSize: 12 }}>{icon}</span>
-              <span style={{ color: '#8a9aaa', flex: 1 }}>{label}</span>
-              <span style={{ color, fontWeight: 600, fontFamily: 'monospace', fontSize: 14 }}>
-                {stats[key as EmployeeStatus] ?? 0}
+              <span style={{ width: 16 }}>{icon}</span>
+              <span style={{ color: '#6a7a8a', flex: 1, fontFamily: 'monospace' }}>{label}</span>
+              <span style={{ color, fontWeight: 700, fontFamily: 'monospace', fontSize: 13 }}>
+                {stats[key] ?? 0}
               </span>
             </div>
           ))}
@@ -91,15 +110,17 @@ export function StatsPanel({ stats, timeStr, onlineCount }: StatsProps) {
   )
 }
 
-const MINIMAP_W = 180
-const MINIMAP_H = 110
+// 小地图
+const MINIMAP_W = 184
+const MINIMAP_H = 116
 
 export function MiniMap({ characters, cameraRect }: MiniMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const scanRef = useRef(0)
   const worldW = MAP_WIDTH * TILE_SIZE
   const worldH = MAP_HEIGHT * TILE_SIZE
-  const scaleX = MINIMAP_W / worldW
-  const scaleY = MINIMAP_H / worldH
+  const sx = MINIMAP_W / worldW
+  const sy = MINIMAP_H / worldH
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -108,64 +129,72 @@ export function MiniMap({ characters, cameraRect }: MiniMapProps) {
     if (!ctx) return
 
     ctx.clearRect(0, 0, MINIMAP_W, MINIMAP_H)
-
-    // 背景
-    ctx.fillStyle = 'rgba(20, 28, 40, 0.9)'
+    ctx.fillStyle = '#04080f'
     ctx.fillRect(0, 0, MINIMAP_W, MINIMAP_H)
 
-    // 简化的区域块
+    // 区域
     for (const z of MAP_ZONES) {
-      const x = z.x * TILE_SIZE * scaleX
-      const y = z.y * TILE_SIZE * scaleY
-      const w = z.width * TILE_SIZE * scaleX
-      const h = z.height * TILE_SIZE * scaleY
-
-      ctx.fillStyle = z.type === 'workstation' ? 'rgba(100, 140, 80, 0.4)'
-        : z.type === 'meeting_room' ? 'rgba(60, 80, 120, 0.5)'
-        : 'rgba(80, 80, 80, 0.3)'
+      const x = z.x * TILE_SIZE * sx
+      const y = z.y * TILE_SIZE * sy
+      const w = z.width * TILE_SIZE * sx
+      const h = z.height * TILE_SIZE * sy
+      ctx.fillStyle = z.type === 'workstation' ? 'rgba(74, 154, 90, 0.3)'
+        : z.type === 'meeting_room' ? 'rgba(60, 100, 160, 0.4)'
+        : 'rgba(60, 60, 60, 0.25)'
       ctx.fillRect(x, y, w, h)
     }
 
     // 角色点
     for (const ch of characters) {
       if (ch.x < 0) continue
-      const cx = ch.x * scaleX
-      const cy = ch.y * scaleY
-
       ctx.fillStyle = ch.status === 'working' ? '#4aba6a'
         : ch.status === 'meeting' ? '#baba4a'
-        : '#7a8aaa'
-      ctx.fillRect(cx - 1, cy - 1, 2, 2)
+        : ch.status === 'walking' ? '#4a9aba'
+        : '#6a7a8a'
+      ctx.fillRect(ch.x * sx - 1, ch.y * sy - 1, 2, 2)
     }
 
-    // 摄像机视口
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
+    // 视口框
+    ctx.strokeStyle = 'rgba(200, 230, 255, 0.7)'
     ctx.lineWidth = 1
-    ctx.strokeRect(
-      cameraRect.x * scaleX,
-      cameraRect.y * scaleY,
-      cameraRect.w * scaleX,
-      cameraRect.h * scaleY,
-    )
-  }, [characters, cameraRect, scaleX, scaleY])
+    ctx.strokeRect(cameraRect.x * sx, cameraRect.y * sy, cameraRect.w * sx, cameraRect.h * sy)
 
-  useEffect(() => {
-    draw()
-  }, [draw])
+    // 扫描线
+    scanRef.current = (scanRef.current + 0.5) % MINIMAP_H
+    ctx.fillStyle = 'rgba(74, 186, 106, 0.06)'
+    ctx.fillRect(0, scanRef.current, MINIMAP_W, 2)
+
+    // 格栅叠加 (CRT 效果)
+    for (let row = 0; row < MINIMAP_H; row += 3) {
+      ctx.fillStyle = 'rgba(0,0,0,0.08)'
+      ctx.fillRect(0, row, MINIMAP_W, 1)
+    }
+  }, [characters, cameraRect, sx, sy])
+
+  useEffect(() => { draw() }, [draw])
 
   return (
     <div
+      className="pixel-window"
       style={{
         position: 'fixed',
-        bottom: 16,
+        bottom: 80,
         right: 16,
-        border: '1px solid rgba(74, 138, 186, 0.3)',
-        borderRadius: 8,
         overflow: 'hidden',
-        backdropFilter: 'blur(8px)',
         zIndex: 50,
       }}
     >
+      <div style={{
+        fontSize: 9,
+        color: '#2a6a3a',
+        fontFamily: 'monospace',
+        padding: '3px 8px',
+        background: '#04080f',
+        borderBottom: '1px solid #0a2a1a',
+        letterSpacing: 2,
+      }}>
+        ▣ RADAR
+      </div>
       <canvas
         ref={canvasRef}
         width={MINIMAP_W}
@@ -176,76 +205,50 @@ export function MiniMap({ characters, cameraRect }: MiniMapProps) {
   )
 }
 
-export function CharacterCard({ char, onClose }: CharCardProps) {
-  if (!char) return null
-  const info = STATUS_LABELS[char.status]
+// 底部工具栏
+export function BottomToolbar({ onOpenGrid, onOpenDashboard, activePanel }: ToolbarProps) {
+  const slots = [
+    { icon: '🗺️', label: 'MAP',    action: null },
+    { icon: '👥', label: 'ROSTER', action: 'grid' },
+    { icon: '📊', label: 'STATS',  action: 'dashboard' },
+    { icon: '🔍', label: 'SEARCH', action: null },
+    { icon: '⚙️', label: 'CONFIG', action: null },
+    { icon: '🔊', label: 'AUDIO',  action: null },
+  ]
+
+  const handleClick = (action: string | null) => {
+    if (action === 'grid') onOpenGrid()
+    else if (action === 'dashboard') onOpenDashboard()
+  }
 
   return (
     <div
       style={{
         position: 'fixed',
-        bottom: 140,
-        right: 16,
-        background: 'rgba(15, 20, 30, 0.92)',
-        border: '1px solid rgba(74, 138, 186, 0.4)',
-        borderRadius: 8,
-        padding: '14px 18px',
-        minWidth: 200,
-        backdropFilter: 'blur(8px)',
+        bottom: 16,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        display: 'flex',
+        gap: 4,
         zIndex: 50,
+        padding: '6px 8px',
+        background: '#060c18',
+        border: '2px solid #1a3a5a',
+        boxShadow: '0 0 0 1px #0a1a2a, 6px 6px 0 rgba(0,0,0,0.6)',
+        animation: 'pixel-slide-up 0.3s ease-out',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 16, fontWeight: 700, color: '#e8e0d0' }}>
-          {char.employee.name}
-        </span>
+      {slots.map((s, i) => (
         <button
-          onClick={onClose}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#7a8a9a',
-            cursor: 'pointer',
-            fontSize: 16,
-            padding: '0 4px',
-          }}
+          key={i}
+          className={`pixel-slot${activePanel === s.action ? ' active' : ''}`}
+          onClick={() => handleClick(s.action)}
+          title={s.label}
         >
-          ✕
+          <span className="pixel-slot-icon">{s.icon}</span>
+          <span className="pixel-slot-label">{s.label}</span>
         </button>
-      </div>
-
-      <div style={{ marginTop: 8, fontSize: 12, color: '#7a9aba' }}>
-        {char.employee.department}
-      </div>
-
-      <div
-        style={{
-          marginTop: 10,
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '4px 10px',
-          background: `${info.color}22`,
-          border: `1px solid ${info.color}44`,
-          borderRadius: 4,
-          fontSize: 12,
-          color: info.color,
-        }}
-      >
-        <span>{info.icon}</span>
-        <span>{info.label}</span>
-      </div>
-
-      {char.employee.meetingSlots.length > 0 && (
-        <div style={{ marginTop: 10, fontSize: 11, color: '#6a7a8a' }}>
-          <div style={{ marginBottom: 4, color: '#8a9aaa' }}>今日会议</div>
-          {char.employee.meetingSlots.map((m, i) => (
-            <div key={i} style={{ marginLeft: 8 }}>
-              {m.startHour}:{m.startMin.toString().padStart(2, '0')} · {m.durationMin}分钟
-            </div>
-          ))}
-        </div>
-      )}
+      ))}
     </div>
   )
 }
