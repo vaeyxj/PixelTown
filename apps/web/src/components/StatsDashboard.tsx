@@ -101,7 +101,8 @@ function TeamRadar({ width = 160, height = 160 }: { width?: number; height?: num
         const a = (i * 2 * Math.PI / n) - Math.PI / 2
         const x = cx + r * ratio * Math.cos(a)
         const y = cy + r * ratio * Math.sin(a)
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+        if (i === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
       }
       ctx.closePath()
       ctx.strokeStyle = lv === 5 ? 'rgba(74, 106, 154, 0.5)' : 'rgba(74, 106, 154, 0.18)'
@@ -125,7 +126,8 @@ function TeamRadar({ width = 160, height = 160 }: { width?: number; height?: num
       const ratio = vals[i] / 100
       const x = cx + r * ratio * Math.cos(a)
       const y = cy + r * ratio * Math.sin(a)
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
     }
     ctx.closePath()
     ctx.fillStyle = 'rgba(74, 138, 186, 0.2)'

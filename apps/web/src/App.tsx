@@ -125,7 +125,6 @@ function App() {
             <EmployeeGrid
               onClose={() => setActivePanel(null)}
               onSelectEmployee={id => {
-                // 找到对应的 CharacterState
                 const found = miniMapChars.find(c => c.employee.id === id)
                 if (found) setSelectedChar(found)
               }}
