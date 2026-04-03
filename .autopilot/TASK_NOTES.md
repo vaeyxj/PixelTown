@@ -1,5 +1,5 @@
 # PixelTown Task Notes
-上次更新: Phase 2 迭代 3 完成
+上次更新: Phase 2 迭代 6 完成
 
 ## 已完成
 
@@ -90,8 +90,40 @@ Phase 2 验收标准核查：
   - 粒子在当前视口世界坐标范围内随机位置生成（viewport-aware 位置计算）
   - 寿命 2–4 秒，带渐出效果
 
-待完成（Phase 2 后续迭代）：
-- 角色阴影独立层（当前已有烘焙版阴影，独立层可改善深度排序）
+#### Phase 2 迭代 5 完成
+- **角色阴影独立层** (`shadowLayer`)
+  - 从 `characterSprite.ts` 移除烘焙进纹理的椭圆阴影（drawCharFrame + drawSitFrame 各一处）
+  - `engine.ts` 在 characterLayer 之前创建 `shadowLayer: Container`，确保阴影始终在角色下方
+  - `npcManager.ts` 接受新参数 `shadowLayer: Container`；为每个 NPC 创建 `Graphics` 椭圆阴影精灵
+  - `CharEntry` 接口新增 `shadow: Graphics` 字段
+  - update 循环同步 shadow.x/y + visible 与 sprite 保持一致
+  - engine.ts 为玩家也创建独立阴影，在游戏循环中同步位置
+  - engine.ts 保持 199 行（< 200 行要求）
+
+#### Phase 2 迭代 6 完成
+- **idle 动画状态** (`characterSprite.ts`)
+  - 新增 `drawIdleFrame(g, x, y, dir, breathFrame, ap)`: 2帧方向感知呼吸动画
+  - `CharacterFrames` 新增 `idle: Record<Direction, readonly Texture[]>` 字段
+  - 精灵图布局: 4行行走 + 1行坐姿 + 4行idle(每方向一行，2帧宽)
+- **npcManager 使用 idle 帧**
+  - idle/away 状态下使用 `charFrames.idle[direction]` 0.8Hz 切换（原只有 sine 位移）
+  - 动画状态机清晰：isAtDesk(坐姿) → isIdle(idle帧) → 行走帧
+- **静态地图烘焙为 Sprite** (`mapRenderer.ts`)
+  - 走廊、区域填充、墙壁、装饰全部绘制到单张 `staticG: Graphics`
+  - 用 `app.renderer.render({ container: staticG, target: staticRT })` 烘焙成 `RenderTexture`
+  - 创建 `staticSprite = new Sprite(staticRT)` 加入 worldContainer（不再有静态 Graphics 在显示列表中）
+  - destroy() 中 `staticRT.destroy(true)` 清理 GPU 资源
+
+Phase 2 验收标准最终核查：
+- [x] 地图用 sprite 渲染，不再用 Graphics 画矩形（静态内容已烘焙成 Sprite）
+- [x] 角色用 sprite sheet 动画，有 idle/walk/sit 全部三状态
+- [x] 视差效果（背景 0.3x、前景 1.05x）
+- [x] 粒子效果（行走尘土、键盘光效、大气光斑）
+- [x] engine.ts < 200 行 (199 行)
+- [x] `pnpm build` exit 0
+- [x] `pnpm test` 通过 (11 tests)
+
+Phase 2 完整交付 ✓
 
 ## 关键上下文
 - 项目在 apps/web/ 下，运行 pnpm build/lint/test 时需 cd apps/web
@@ -105,7 +137,7 @@ Phase 2 验收标准核查：
 ## 阻碍
 - 无当前阻碍
 
-## 上次质量门报告 (Phase 2 迭代 3)
+## 上次质量门报告 (Phase 2 迭代 6)
 BUILD: ✓ PASS
 LINT: ✓ PASS（build 包含 tsc 检查）
 TEST: ✓ PASS (11 tests across 2 files)
