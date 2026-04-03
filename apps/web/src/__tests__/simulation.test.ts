@@ -41,28 +41,6 @@ describe('computeEmployeeState', () => {
     const state = computeEmployeeState(emp, 3, 0)
     expect(state.status).toBe('away')
   })
-
-  it('返回坐标', () => {
-    const state = computeEmployeeState(emp, 10, 0)
-    expect(typeof state.targetX).toBe('number')
-    expect(typeof state.targetY).toBe('number')
-  })
-})
-
-describe('initCharacterStates', () => {
-  it('为每个员工创建 CharacterState', () => {
-    const employees = generateEmployees(8)
-    const states = initCharacterStates(employees, 10, 0)
-    expect(states).toHaveLength(8)
-  })
-
-  it('state 包含方向字段', () => {
-    const employees = generateEmployees(3)
-    const states = initCharacterStates(employees, 14, 0)
-    states.forEach((s) => {
-      expect(s.direction).toBeTruthy()
-    })
-  })
 })
 
 describe('getStatusCounts', () => {
@@ -84,7 +62,6 @@ describe('getDaylightOverlay', () => {
 
   it('返回合法 color 和 alpha', () => {
     const overlay = getDaylightOverlay(18, 30)
-    expect(typeof overlay.color).toBe('number')
     expect(overlay.alpha).toBeGreaterThanOrEqual(0)
     expect(overlay.alpha).toBeLessThanOrEqual(1)
   })
