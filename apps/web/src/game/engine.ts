@@ -19,6 +19,7 @@ import { createPlayerController } from './playerController'
 import { createNpcManager } from './npcManager'
 import { createBubbleSystem } from './bubbleSystem'
 import { createParticleSystem } from './particleSystem'
+import { applyParallax, createBackgroundLayer } from './parallax'
 
 export interface GameCallbacks {
   onStatsUpdate: (stats: Record<EmployeeStatus, number>, timeStr: string, onlineCount: number) => void
@@ -37,6 +38,9 @@ const PLAYER_SPEED = 100
 export function createGameEngine(app: Application, callbacks: GameCallbacks): GameEngine {
   const worldW = MAP_WIDTH * TILE_SIZE
   const worldH = MAP_HEIGHT * TILE_SIZE
+
+  const bgLayer = createBackgroundLayer(app)
+  app.stage.addChild(bgLayer)
 
   const worldContainer = new Container()
   worldContainer.label = 'world'
@@ -105,6 +109,7 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
   playerNameTag.anchor.set(0.5, 1)
   nameTagLayer.addChild(playerNameTag)
 
+  const parallaxLayers = [{ container: bgLayer, scrollFactor: 0.3 }]
   const bubbleSystem = createBubbleSystem(bubbleLayer)
   const particleSystem = createParticleSystem(particleLayer)
   const playerController = createPlayerController()
@@ -164,6 +169,7 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
     }
 
     camera.update(playerState.x, playerState.y)
+    applyParallax(parallaxLayers, worldContainer.x, worldContainer.y, app.screen.width, app.screen.height)
 
     const s = camera.scale
     const statuses = ['working', 'meeting', 'lunch', 'dinner', 'walking', 'idle', 'away'] as const
@@ -183,6 +189,7 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
       bubbleSystem.destroy()
       particleSystem.destroy()
       destroyMap()
+      bgLayer.destroy({ children: true })
       worldContainer.destroy({ children: true })
     },
     startEntryAnimation() {
