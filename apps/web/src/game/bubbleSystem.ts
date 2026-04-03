@@ -10,6 +10,7 @@ import { CHAR_H } from './characterSprite'
 interface ChatBubble {
   x: number
   y: number
+  charId: number
   life: number
   readonly maxLife: number
   readonly textObj: Text
@@ -21,12 +22,15 @@ export interface CharEntryLike {
 }
 
 export interface BubbleSystem {
+  /** 当前有气泡的角色 employee.id 集合 */
+  readonly talkingIds: ReadonlySet<number>
   update(dt: number, entries: readonly CharEntryLike[]): void
   destroy(): void
 }
 
 export function createBubbleSystem(bubbleLayer: Container): BubbleSystem {
   const chatBubbles: ChatBubble[] = []
+  const talkingIds = new Set<number>()
   let nextChatTimer = 2
 
   function spawnBubble(entries: readonly CharEntryLike[]): void {
@@ -58,9 +62,12 @@ export function createBubbleSystem(bubbleLayer: Container): BubbleSystem {
     bubbleLayer.addChild(bgObj)
     bubbleLayer.addChild(textObj)
 
+    const charId = entry.state.employee.id
+    talkingIds.add(charId)
     chatBubbles.push({
       x: entry.state.x,
       y: entry.state.y,
+      charId,
       life: 4,
       maxLife: 4,
       textObj,
@@ -69,6 +76,8 @@ export function createBubbleSystem(bubbleLayer: Container): BubbleSystem {
   }
 
   return {
+    get talkingIds(): ReadonlySet<number> { return talkingIds },
+
     update(dt, entries) {
       nextChatTimer -= dt
       if (nextChatTimer <= 0) {
@@ -88,6 +97,7 @@ export function createBubbleSystem(bubbleLayer: Container): BubbleSystem {
         b.bgObj.alpha = alpha
 
         if (b.life <= 0) {
+          talkingIds.delete(b.charId)
           bubbleLayer.removeChild(b.textObj)
           bubbleLayer.removeChild(b.bgObj)
           b.textObj.destroy()

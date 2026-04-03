@@ -30,7 +30,7 @@ export interface CharEntry {
 
 export interface NpcManager {
   readonly entries: readonly CharEntry[]
-  update(dt: number, hour: number, minute: number, emojiAnimTime: number): void
+  update(dt: number, hour: number, minute: number, emojiAnimTime: number, talkingIds?: ReadonlySet<number>): void
   destroy(): void
 }
 
@@ -86,7 +86,7 @@ export function createNpcManager(
   return {
     entries,
 
-    update(dt, hour, minute, emojiAnimTime) {
+    update(dt, hour, minute, emojiAnimTime, talkingIds?) {
       updateCharacters(characters, dt, hour, minute)
 
       for (const entry of entries) {
@@ -101,7 +101,11 @@ export function createNpcManager(
         nameTag.visible = true
         emojiTag.visible = true
 
-        sprite.x = state.x
+        // talk 微摇：气泡弹出时左右轻摆
+        const isTalking = talkingIds?.has(state.employee.id) ?? false
+        const talkWobble = isTalking ? Math.sin(emojiAnimTime * 9) * 0.8 : 0
+
+        sprite.x = state.x + talkWobble
         sprite.y = state.y
         sprite.zIndex = Math.floor(state.y)
 

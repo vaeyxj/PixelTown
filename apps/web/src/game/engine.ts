@@ -156,7 +156,7 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
     playerNameTag.x = playerState.x
     playerNameTag.y = playerState.y - CHAR_H * 2 - 8
 
-    npcManager.update(dt, h, m, emojiAnimTime)
+    npcManager.update(dt, h, m, emojiAnimTime, bubbleSystem.talkingIds)
     bubbleSystem.update(dt, npcManager.entries)
     particleSystem.update(dt)
 
