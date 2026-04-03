@@ -21,9 +21,9 @@ dist/assets/RenderTargetSystem-Cqi1ahhm.js         76.41 kB │ gzip:  22.48 kB
 dist/assets/Geometry-Dilufxxj.js                  101.50 kB │ gzip:  31.07 kB
 dist/assets/index-CSwaWeM7.js                     538.46 kB │ gzip: 161.92 kB
 
+✓ built in 304ms
 [plugin builtin:vite-reporter] 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 361ms

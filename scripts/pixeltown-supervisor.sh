@@ -12,8 +12,8 @@
 ###############################################################################
 set -uo pipefail
 
-# 确保 PATH 包含 claude CLI 和常用工具
-export PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
+# 确保 PATH 包含所有必要工具
+export PATH="$HOME/.local/bin:$HOME/Library/pnpm:$HOME/miniconda3/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
 PROJECT_DIR="/Users/yuxijian/claudeProjects/PixelTown"
 AUTOPILOT_DIR="$PROJECT_DIR/.autopilot"
@@ -93,21 +93,18 @@ update_state() {
   while [[ $# -ge 2 ]]; do
     local key="$1" val="$2"
     shift 2
-    # 判断值类型
-    case "$val" in
-      true|false)
-        py_updates+="state['$key'] = $val; "
-        ;;
-      [0-9]*)
-        py_updates+="state['$key'] = $val; "
-        ;;
-      \[*)
-        py_updates+="state['$key'] = json.loads('$val'); "
-        ;;
-      *)
-        py_updates+="state['$key'] = '$val'; "
-        ;;
-    esac
+    # 判断值类型：纯数字(整数)用数字，其他用字符串
+    if [[ "$val" == "true" || "$val" == "false" ]]; then
+      py_updates+="state['$key'] = $val; "
+    elif [[ "$val" =~ ^[0-9]+$ ]]; then
+      # 纯数字（不含连字符、冒号等）
+      py_updates+="state['$key'] = $val; "
+    elif [[ "$val" == \[* ]]; then
+      py_updates+="state['$key'] = json.loads('$val'); "
+    else
+      # 字符串值（包括日期、状态文本等）
+      py_updates+="state['$key'] = '$val'; "
+    fi
   done
 
   python3 -c "
