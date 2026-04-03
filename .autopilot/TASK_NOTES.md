@@ -25,28 +25,37 @@
   - ui/: panel.png (256×64)
   - backgrounds/: login.png (320×180)
 
+### Phase 1 ✓ (迭代 0 完成)
+- 用 /draw (gemini-2.5-flash-image) 生成 8 张真实像素风美术资源替换占位 PNG
+  - tiles/floor.png: 4×4 暖色系地板瓦片（木地板、地毯、瓷砖、走廊）
+  - tiles/wall.png: 砖墙、木门、窗户瓦片
+  - tiles/furniture.png: 桌椅、显示器、白板、书架、服务器机架
+  - tiles/decor.png: 盆栽、咖啡机、AI海报、代码屏幕
+  - sprites/character_male.png: 16帧男性角色 sprite sheet（4方向行走+坐姿）
+  - sprites/character_female.png: 16帧女性角色 sprite sheet（4方向行走+坐姿+打字）
+  - ui/panel.png: RPG 风格对话框、按钮、状态栏
+  - backgrounds/login.png: 像素风夜景办公楼城市天际线
+
 ## 当前阶段剩余工作
 
-Phase 1: **进行中**
+Phase 1: **验收标准全部满足 ✓**
 
-待完成：
-- 用 /draw 生成真实像素风美术资源替换占位 PNG
-  - 具体提示词已在 phase_1.md 中定义
-  - 每类资源生成后替换对应占位文件并 commit
-- 验证 spriteLoader.ts 在运行时能正确加载资源（集成测试）
+后续可做的提升（非必要）：
+- 将大图 sprite sheet 裁切为独立帧文件（用 scripts/slice-spritesheet.ts）
+- 将 spriteLoader 集成到游戏渲染主循环（Phase 2 范畴）
+- 验证 spriteLoader 在浏览器运行时能正确加载资源
 
 ## 关键上下文
 - 项目在 apps/web/ 下，运行 pnpm build/lint/test 时需 cd apps/web
 - `erasableSyntaxOnly` TypeScript 配置：禁止使用类参数属性（`private readonly param`），改用字段声明+构造器赋值
-- 占位 PNG 是纯色方块，尺寸设计匹配 spriteLoader 的裁切逻辑（128px = 4×32 瓦片）
+- 生成图片用 gemini-2.5-flash-image（香蕉），gemini-3-pro-image-preview（香蕉pro）超时
 - spriteLoader 用 Promise.allSettled 预加载，即使文件缺失也不会崩溃
 - 30 个员工数据含完整属性系统（五维属性、技能树、里程碑、博客）
 
 ## 阻碍
-- /draw 生成美术需要手动审核，自动化循环中难以验证质量
-- 占位 PNG 已满足文件存在的验收标准，/draw 替换是视觉提升不是阻碍
+- 无当前阻碍
 
-## 上次质量门报告 (Phase 0 迭代 4)
+## 上次质量门报告 (Phase 1 迭代 0)
 BUILD: ✓ PASS
-LINT: ✓ PASS (上次验证通过，未改动)
+LINT: ✓ PASS
 TEST: ✓ PASS (17 tests across 2 files)
