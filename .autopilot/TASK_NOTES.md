@@ -205,10 +205,22 @@ Phase 3 验收标准核查：
 - [x] HUD 有 RPG 风格状态栏（LED 时钟 + 像素窗口）+ 底部快捷栏
 - [x] 点击角色弹出完整角色详情面板（雷达图、技能、博客、时间线）
 - [x] 员工图鉴可打开，支持搜索和部门筛选
-- [ ] 统计仪表盘（待实现）
+- [x] 统计仪表盘可打开，显示实时数据（StatsDashboard.tsx 322 行，含雷达图、状态分布、部门柱状图、技能 Top8）
 - [x] 所有 UI 像素风一致
 - [x] `pnpm build` exit 0
 - [x] `pnpm test` 通过 (11 tests)
+
+Phase 3 完整交付 ✓
+
+### Phase 3 迭代 8 完成
+
+#### 3f 微交互补充
+- **SEARCH 按钮连接**: BottomToolbar 新增 `onSearch` 回调，SEARCH 按钮触发员工图鉴（内置搜索）
+- **像素 Toast 通知系统**:
+  - `pixel-ui.css` 新增 `.pixel-toast` / `.pixel-toast-icon` 样式（像素窗口边框 + 发光）
+  - 新增 `@keyframes pixel-toast-in` / `pixel-toast-out`（从底部弹入/渐出）
+  - `App.tsx` 新增 `useToast` hook（2s 显示 → 渐出 → 销毁，多 toast 堆叠）
+  - 打开面板时触发 toast：员工图鉴→ "👥 员工图鉴已打开"，仪表盘→ "📊 团队仪表盘已打开"
 
 ## 阻碍
 - 无当前阻碍（Phase 2 卡住根因：checker_phase2_result.txt 过期，state.json 未推进；已修复，推进至 Phase 3）

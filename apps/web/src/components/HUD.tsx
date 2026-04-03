@@ -17,6 +17,7 @@ interface MiniMapProps {
 interface ToolbarProps {
   readonly onOpenGrid: () => void
   readonly onOpenDashboard: () => void
+  readonly onSearch: () => void
   readonly activePanel: string | null
 }
 
@@ -206,12 +207,12 @@ export function MiniMap({ characters, cameraRect }: MiniMapProps) {
 }
 
 // 底部工具栏
-export function BottomToolbar({ onOpenGrid, onOpenDashboard, activePanel }: ToolbarProps) {
+export function BottomToolbar({ onOpenGrid, onOpenDashboard, onSearch, activePanel }: ToolbarProps) {
   const slots = [
     { icon: '🗺️', label: 'MAP',    action: null },
     { icon: '👥', label: 'ROSTER', action: 'grid' },
     { icon: '📊', label: 'STATS',  action: 'dashboard' },
-    { icon: '🔍', label: 'SEARCH', action: null },
+    { icon: '🔍', label: 'SEARCH', action: 'search' },
     { icon: '⚙️', label: 'CONFIG', action: null },
     { icon: '🔊', label: 'AUDIO',  action: null },
   ]
@@ -219,6 +220,7 @@ export function BottomToolbar({ onOpenGrid, onOpenDashboard, activePanel }: Tool
   const handleClick = (action: string | null) => {
     if (action === 'grid') onOpenGrid()
     else if (action === 'dashboard') onOpenDashboard()
+    else if (action === 'search') onSearch()
   }
 
   return (

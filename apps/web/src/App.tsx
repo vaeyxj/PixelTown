@@ -10,6 +10,32 @@ import type { GameCallbacks } from './game/engine'
 
 type ActivePanel = 'grid' | 'dashboard' | null
 
+interface ToastMsg {
+  id: number
+  icon: string
+  text: string
+  dying: boolean
+}
+
+let toastId = 0
+
+function useToast() {
+  const [toasts, setToasts] = useState<ToastMsg[]>([])
+
+  const show = useCallback((icon: string, text: string) => {
+    const id = ++toastId
+    setToasts(prev => [...prev, { id, icon, text, dying: false }])
+    setTimeout(() => {
+      setToasts(prev => prev.map(t => t.id === id ? { ...t, dying: true } : t))
+    }, 1800)
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id))
+    }, 2200)
+  }, [])
+
+  return { toasts, show }
+}
+
 function App() {
   const [showLogin, setShowLogin] = useState(true)
   const [started, setStarted] = useState(false)
@@ -25,6 +51,7 @@ function App() {
   const [cameraRect, setCameraRect] = useState({ x: 0, y: 0, w: 100, h: 100 })
   const [selectedChar, setSelectedChar] = useState<CharacterState | null>(null)
   const [activePanel, setActivePanel] = useState<ActivePanel>(null)
+  const { toasts, show: showToast } = useToast()
 
   const lastMiniMapUpdate = useRef(0)
 
@@ -55,8 +82,17 @@ function App() {
     setStarted(true)
   }
 
+  const PANEL_TOAST: Record<NonNullable<ActivePanel>, { icon: string; text: string }> = {
+    grid: { icon: '👥', text: '员工图鉴已打开' },
+    dashboard: { icon: '📊', text: '团队仪表盘已打开' },
+  }
+
   const togglePanel = (panel: ActivePanel) => {
-    setActivePanel(prev => prev === panel ? null : panel)
+    setActivePanel(prev => {
+      const next = prev === panel ? null : panel
+      if (next !== null) showToast(PANEL_TOAST[next].icon, PANEL_TOAST[next].text)
+      return next
+    })
   }
 
   return (
@@ -72,6 +108,7 @@ function App() {
           <BottomToolbar
             onOpenGrid={() => togglePanel('grid')}
             onOpenDashboard={() => togglePanel('dashboard')}
+            onSearch={() => togglePanel('grid')}
             activePanel={activePanel}
           />
 
@@ -118,6 +155,37 @@ function App() {
             }}
           >
             WASD 移动 · 滚轮缩放 · 点击角色
+          </div>
+
+          {/* Toast 通知层 */}
+          <div
+            style={{
+              position: 'fixed',
+              bottom: 90,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 6,
+              zIndex: 200,
+              pointerEvents: 'none',
+            }}
+          >
+            {toasts.map(t => (
+              <div
+                key={t.id}
+                className="pixel-toast"
+                style={{
+                  animation: t.dying
+                    ? 'pixel-toast-out 0.4s ease-in forwards'
+                    : 'pixel-toast-in 0.25s ease-out',
+                }}
+              >
+                <span className="pixel-toast-icon">{t.icon}</span>
+                <span>{t.text}</span>
+              </div>
+            ))}
           </div>
         </>
       )}
