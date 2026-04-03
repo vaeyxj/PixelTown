@@ -1,0 +1,15 @@
+**根因诊断 + 解决方案：**
+
+**阻碍原因**：`checker_phase2_result.txt` 是迭代 2 时运行的过期报告（彼时确有 6 处 Graphics），但迭代 4-6 已将静态内容全部烘焙成 RenderTexture+Sprite。State machine 从未推进：`state.json` 里 `completedPhases: [0,1]`，Phase 2 一直被反复触发，`staleCount` 累计到 3。
+
+**新切入点**：识别 Phase 2 已完成 → 直接推进到 Phase 3 并实现 RPG UI 层。
+
+**Phase 3 迭代 1 交付内容：**
+- `src/styles/pixel-ui.css` — 完整 8-bit CSS 设计系统（20+ 组件类 + 7 个关键帧动画）
+- `LoginScreen.tsx` — 打字机效果标题 + 光标闪烁 + 漂浮粒子 + pixel-btn-primary
+- `CharacterPanel.tsx` — 可拖拽 RPG 角色面板，4 个选项卡：概览（五维雷达图 Canvas）、技能（像素格进度条）、博客（可折叠）、成长（时间轴）
+- `EmployeeGrid.tsx` — 全屏员工图鉴，部门筛选 + 搜索 + 多维排序
+- `HUD.tsx` — LED 时钟 + RADAR 小地图 + 6 格底部工具栏
+- `App.tsx` — 全部接入，工具栏 ROSTER 按钮触发员工图鉴
+
+**BUILD: ✓ PASS | TEST: ✓ PASS (11 tests)**

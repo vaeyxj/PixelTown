@@ -1,0 +1,8 @@
+Phase 3 迭代 8 完成。
+
+**本次交付**：
+- `BottomToolbar` SEARCH 按钮已连接，点击打开员工图鉴（内置搜索）
+- 像素风 Toast 通知系统：打开任意面板时底部弹出像素气泡通知（2s 后渐出），支持多条堆叠
+- TASK_NOTES.md 统计仪表盘 checkbox 已标记完成，Phase 3 全部验收标准 `[x]`
+
+**质量门**：BUILD ✓ | TEST ✓ (11 tests)

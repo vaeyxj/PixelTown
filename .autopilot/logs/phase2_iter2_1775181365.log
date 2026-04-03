@@ -1,0 +1,15 @@
+Phase 2 迭代 2 完成。实现内容：
+
+**前景视差层**（`parallax.ts`）
+- `createForegroundLayer()`: 12 个像素风盆栽散布走廊附近，scrollFactor=1.05
+- 前景层添加到 app.stage 最顶层，背景 0.3x、前景 1.05x，视差纵深可见
+
+**键盘光效粒子**（`particleSystem.ts` + `npcManager.ts`）
+- `emitKeyboardGlow(x, y)`: 每次 3 颗白/黄微粒上浮，0.5s 生命周期
+- NPC 坐姿工作时每 1.5s 触发一次，glowTimer 随机初始相位防止同步
+
+**idle 呼吸动画**（`npcManager.ts`）
+- idle/away 状态下 sprite.y 叠加正弦浮动（振幅 0.5px，频率 1.5Hz）
+- 每个 NPC 相位不同（+员工 id 偏移），避免集体同步浮动
+
+质量门：`pnpm build` ✓ | `pnpm test` 11/11 ✓ | engine.ts 199 行 ✓

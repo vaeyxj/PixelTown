@@ -1,0 +1,7 @@
+完成。本次迭代实现了**角色阴影独立层**：
+
+- `characterSprite.ts`：移除烘焙进纹理的阴影椭圆（walk 帧 + sit 帧各一处）
+- `engine.ts`：在 characterLayer 之前插入 `shadowLayer`，阴影始终渲染在角色下方；玩家也有独立阴影
+- `npcManager.ts`：接受 `shadowLayer` 参数，为每个 NPC 创建 `Graphics` 椭圆阴影，实时同步位置/可见性；`CharEntry` 接口新增 `shadow` 字段
+
+质量门：BUILD ✓ | TEST 11/11 ✓ | engine.ts 199 行 ✓

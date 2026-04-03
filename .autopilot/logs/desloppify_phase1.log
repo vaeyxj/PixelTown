@@ -1,0 +1,6 @@
+Done. Phase 1 changes were mostly PNG asset replacements — the only code added was `spriteLoader.ts` and `spriteSheet.ts`. Two issues found and fixed in `spriteSheet.ts`:
+
+- Removed unused `Pose` type
+- Replaced unnecessary dynamic import of `loadTileset` with a static import (already alongside `loadSpriteSheet`)
+
+Build and lint clean. Committed as `refactor(phase-1): de-sloppify cleanup`.

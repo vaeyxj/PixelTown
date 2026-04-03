@@ -1,0 +1,7 @@
+Done. Phase 3 code was already quite clean. Changes made:
+
+1. **App.tsx** — removed redundant `// 找到对应的 CharacterState` inline comment
+2. **CharacterPanel.tsx** (×2) — fixed ternary-as-statement `i === 0 ? moveTo : lineTo` → `if/else`, fixing `@typescript-eslint/no-unused-expressions` lint errors
+3. **StatsDashboard.tsx** (×2) — same fix in the team radar canvas drawing loop
+
+Build ✓ · Lint ✓ · Committed as `9ffbf0a`.

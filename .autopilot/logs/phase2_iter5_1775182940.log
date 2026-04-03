@@ -1,0 +1,17 @@
+Phase 2 迭代 6 完成，修复了 checker 发现的两个真实遗漏：
+
+**`characterSprite.ts`** — 新增 `idle` 动画状态：
+- 添加 `drawIdleFrame()` 函数：2帧方向感知呼吸动画（breathFrame=1时上半身上移1px）
+- `CharacterFrames` 接口新增 `idle: Record<Direction, readonly Texture[]>`
+- 精灵图新增4行（每方向一行idle帧）
+
+**`npcManager.ts`** — 使用 idle 帧：
+- idle/away 状态下切换到 `charFrames.idle[direction]`（0.8Hz，2帧循环）
+- 动画状态机完整：坐姿 → idle帧 → 行走帧
+
+**`mapRenderer.ts`** — 静态内容烘焙为 Sprite：
+- 走廊/区域/墙壁/装饰全部绘入单个 `Graphics`
+- 用 `app.renderer.render()` 烘焙成 `RenderTexture`，显示为 `Sprite`
+- 显示列表中不再有静态 Graphics 对象
+
+**质量门：BUILD ✓ TEST ✓（11 tests）**

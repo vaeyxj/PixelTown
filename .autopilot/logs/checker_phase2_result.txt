@@ -1,0 +1,3 @@
+mapRenderer.ts 仍大量使用 Graphics 画矩形绘制地图（未替换为 sprite 渲染）。
+
+PHASE_INCOMPLETE: 地图渲染仍使用 Graphics 画矩形（mapRenderer.ts），未完成 sprite-based 替换

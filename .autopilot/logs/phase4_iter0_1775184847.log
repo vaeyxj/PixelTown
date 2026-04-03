@@ -1,0 +1,12 @@
+Phase 4 迭代 0 完成，所有验收标准全部达成：
+
+**新增文件：**
+- `src/game/synthAudio.ts` — 7 种 8-bit 程序化音效 + 粉噪音 Ambience + 三角波 BGM 循环
+- `src/game/audioManager.ts` — 全局单例，三路独立音量（master/bgm/sfx），静音开关，用户交互后解锁
+
+**修改文件：**
+- `HUD.tsx` — 新增 `AudioPanel` 组件（像素风滑块）+ AUDIO 按钮连接（左键静音/右键开面板）+ 动态图标 🔊/🔉/🔈/🔇
+- `App.tsx` — 进入时解锁音频、面板开关触发对应音效、角色点击触发提示音、云朵粒子和暗角叠加层
+- `pixel-ui.css` — `.pixel-vignette`（radial-gradient 暗角）、`.pixel-cloud`（漂浮云朵动画）、`.pixel-range`（像素风 range 输入样式）
+
+`pnpm build` ✓ `pnpm test` 11/11 ✓

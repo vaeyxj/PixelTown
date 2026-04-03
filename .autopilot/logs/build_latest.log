@@ -3,25 +3,31 @@
 > tsc -b && vite build
 
 vite v8.0.3 building client environment for production...
-[2Ktransforming...✓ 724 modules transformed.
+[2Ktransforming...✓ 739 modules transformed.
 rendering chunks...
 computing gzip size...
-dist/index.html                                     0.83 kB │ gzip:   0.40 kB
-dist/assets/index-D_Wm6bQr.css                      0.23 kB │ gzip:   0.20 kB
-dist/assets/webworkerAll-_iCNCvOs.js                0.05 kB │ gzip:   0.06 kB
-dist/assets/WebGLRenderer-CUHQjdw8.js               0.06 kB │ gzip:   0.08 kB
-dist/assets/CanvasRenderer-DdBqXMJp.js              0.06 kB │ gzip:   0.08 kB
-dist/assets/WebGPURenderer-Bq05oXYX.js              0.06 kB │ gzip:   0.08 kB
-dist/assets/init-Dm2i8SP8.js                        0.10 kB │ gzip:   0.10 kB
-dist/assets/browserAll-Cak3XnWe.js                  0.19 kB │ gzip:   0.15 kB
-dist/assets/getTextureBatchBindGroup-BmkdZLvo.js    0.34 kB │ gzip:   0.26 kB
-dist/assets/ImageSource-D2Nyoyfd.js                 0.37 kB │ gzip:   0.25 kB
-dist/assets/BufferResource-l0iLg67B.js             10.52 kB │ gzip:   2.77 kB
-dist/assets/RenderTargetSystem-Cqi1ahhm.js         76.41 kB │ gzip:  22.48 kB
-dist/assets/Geometry-Dilufxxj.js                  101.50 kB │ gzip:  31.07 kB
-dist/assets/index-CSwaWeM7.js                     538.46 kB │ gzip: 161.92 kB
+dist/index.html                                     1.23 kB │ gzip:   0.48 kB
+dist/assets/index-D8Xdbg6-.css                      7.02 kB │ gzip:   1.97 kB
+dist/assets/webworkerAll-B8EFvnHb.js                0.05 kB │ gzip:   0.06 kB
+dist/assets/BitmapFont-m9haxQUh.js                  0.06 kB │ gzip:   0.07 kB
+dist/assets/WebGLRenderer-CLH0kAK-.js               0.06 kB │ gzip:   0.08 kB
+dist/assets/CanvasRenderer-C1vej-kI.js              0.06 kB │ gzip:   0.08 kB
+dist/assets/WebGPURenderer-BzP1qqRQ.js              0.06 kB │ gzip:   0.08 kB
+dist/assets/init-B5bLASia.js                        0.10 kB │ gzip:   0.10 kB
+dist/assets/browserAll-D0wusl71.js                  0.23 kB │ gzip:   0.16 kB
+dist/assets/getTextureBatchBindGroup-BEt_pZuD.js    0.34 kB │ gzip:   0.26 kB
+dist/assets/ImageSource-BaxsdStY.js                 0.37 kB │ gzip:   0.25 kB
+dist/assets/CanvasPool-uvdH0Iih.js                  0.75 kB │ gzip:   0.42 kB
+dist/assets/Cache--D3xOmv3.js                       1.09 kB │ gzip:   0.55 kB
+dist/assets/BufferResource-C2aQF8uk.js             10.56 kB │ gzip:   2.79 kB
+dist/assets/GCManagedHash-jMfNVFVu.js              25.45 kB │ gzip:   8.72 kB
+dist/assets/Filter-DAlRG84J.js                     38.73 kB │ gzip:  11.03 kB
+dist/assets/RenderTargetSystem-Bb7EIcaH.js         50.99 kB │ gzip:  14.37 kB
+dist/assets/GraphicsContext-Fy8loagy.js            54.29 kB │ gzip:  17.54 kB
+dist/assets/Geometry-MFRJ-jpk.js                   62.85 kB │ gzip:  20.78 kB
+dist/assets/index-BGcOhoun.js                     610.43 kB │ gzip: 182.55 kB
 
-✓ built in 329ms
+✓ built in 391ms
 [plugin builtin:vite-reporter] 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application

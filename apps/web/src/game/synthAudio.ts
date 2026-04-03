@@ -66,38 +66,6 @@ export function playNotification(ctx: AudioContext, dest: AudioNode): void {
   })
 }
 
-/** 轻柔脚步声（低频噪音脉冲） */
-export function playFootstep(ctx: AudioContext, dest: AudioNode): void {
-  const dur = 0.06
-  const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate)
-  const data = buf.getChannelData(0)
-  for (let i = 0; i < data.length; i++) {
-    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 4)
-  }
-  const src = ctx.createBufferSource()
-  const filter = ctx.createBiquadFilter()
-  const gain = ctx.createGain()
-  src.buffer = buf
-  filter.type = 'bandpass'; filter.frequency.value = 500; filter.Q.value = 1.5
-  gain.gain.value = 0.25
-  src.connect(filter); filter.connect(gain); gain.connect(dest)
-  src.start()
-}
-
-/** 键盘敲击声（随机音高方波） */
-export function playKeyboard(ctx: AudioContext, dest: AudioNode): void {
-  const freq = 200 + Math.random() * 300
-  const dur = 0.035
-  const osc = ctx.createOscillator()
-  const gain = ctx.createGain()
-  osc.connect(gain); gain.connect(dest)
-  osc.type = 'square'
-  osc.frequency.value = freq
-  gain.gain.setValueAtTime(0.15, ctx.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur)
-  osc.start(); osc.stop(ctx.currentTime + dur)
-}
-
 // --- 循环生成 ---
 
 /** 粉噪音 buffer（4 秒，Voss 算法近似） */

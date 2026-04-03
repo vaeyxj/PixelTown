@@ -1,0 +1,8 @@
+完成。这次迭代做了真正有意义的事：
+
+**新增内容：**
+- `dayNightSystem.ts`（新模块，64 行）：提取天色遮罩逻辑，并在黎明/黄昏时向视口内随机位置发射大气粒子
+- `particleSystem.ts`：新增 `emitAtmosphericDust(x, y, color)` — 慢速漂移、长寿命的环境粒子
+- `engine.ts`：191 行（从 199 降至 191），移除所有 daylightOverlay 内联代码
+
+**与前 3 次迭代的根本区别：** 前几次是在同一层加小动画（wobble、呼吸、glow），这次是**提取了一个全新系统模块**，并实现了原 TASK_NOTES 中明确列出的"日出日落大气光斑粒子"功能。

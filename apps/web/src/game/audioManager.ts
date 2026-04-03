@@ -70,16 +70,6 @@ class AudioManager {
     synth.playNotification(this.ctx, this.sfxGain)
   }
 
-  playFootstep(): void {
-    if (!this.ctx || !this.sfxGain) return
-    synth.playFootstep(this.ctx, this.sfxGain)
-  }
-
-  playKeyboard(): void {
-    if (!this.ctx || !this.sfxGain) return
-    synth.playKeyboard(this.ctx, this.sfxGain)
-  }
-
   // --- 循环控制 ---
 
   startAmbience(): void {
@@ -87,19 +77,9 @@ class AudioManager {
     this.ambiHandle = synth.createAmbience(this.ctx, this.ambiGain)
   }
 
-  stopAmbience(): void {
-    this.ambiHandle?.stop()
-    this.ambiHandle = null
-  }
-
   startBGM(): void {
     if (!this.ctx || !this.bgmGain || this.bgmHandle) return
     this.bgmHandle = synth.createBGM(this.ctx, this.bgmGain)
-  }
-
-  stopBGM(): void {
-    this.bgmHandle?.stop()
-    this.bgmHandle = null
   }
 
   // --- 音量控制 ---
@@ -134,7 +114,6 @@ class AudioManager {
   get masterVol(): number { return this._masterVol }
   get bgmVol(): number { return this._bgmVol }
   get sfxVol(): number { return this._sfxVol }
-  get ready(): boolean { return this.unlocked }
 }
 
 export const audioManager = new AudioManager()

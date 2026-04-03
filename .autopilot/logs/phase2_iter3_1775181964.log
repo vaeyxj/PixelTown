@@ -1,0 +1,9 @@
+Phase 2 迭代 3 完成。
+
+**本次变更摘要：**
+
+- `bubbleSystem.ts` — 新增 `talkingIds: ReadonlySet<number>` 属性，气泡 spawn 时记录角色 ID，过期时移除
+- `npcManager.ts` — `update()` 接收可选 `talkingIds`，对 talking 角色加 `sin(t*9)*0.8px` x 轴微摇动画
+- `engine.ts` — 单行修改，传入 `bubbleSystem.talkingIds`，行数保持 199 行
+
+**质量门：** BUILD ✓ | TEST 11/11 ✓

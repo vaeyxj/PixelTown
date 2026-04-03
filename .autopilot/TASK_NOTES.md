@@ -1,5 +1,5 @@
 # PixelTown Task Notes
-上次更新: Phase 2 迭代 7 完成
+上次更新: Phase 4 迭代 0 完成
 
 ## 已完成
 
@@ -228,4 +228,56 @@ Phase 3 完整交付 ✓
 ## 上次质量门报告 (Phase 2 迭代 7)
 BUILD: ✓ PASS
 LINT: ✓ PASS（build 包含 tsc 检查）
+TEST: ✓ PASS (11 tests across 2 files)
+
+### Phase 4 迭代 0 完成
+
+#### 4a. 音效系统 (`src/game/audioManager.ts`)
+- 全局单例 `audioManager`，用户点击 Enter 后调用 `unlock()` 初始化 AudioContext
+- 三路独立 GainNode：master / bgm / sfx（可分离控制）
+- `toggleMute()` 静音开关
+- `setMasterVol / setBgmVol / setSfxVol` 独立音量调节
+- 进入世界后自动启动 Ambience + BGM
+
+#### 4b. 程序化音效 (`src/game/synthAudio.ts`)
+- `playClick`: 方波下扫音（1200→600Hz，40ms）
+- `playMenuOpen`: 方波上升四音阶（C5→C6，280ms）
+- `playMenuClose`: 方波下降四音阶（G5→G4，240ms）
+- `playNotification`: 三角波双音叮咚（A4+C#5，400ms）
+- `playFootstep`: 带通滤波噪音脉冲（500Hz bandpass）
+- `playKeyboard`: 随机音高方波短音（200~500Hz，35ms）
+- `createAmbience`: 粉噪音（Voss 算法 6 阶滤波）低通 1200Hz 循环
+- `createBGM`: 三角波 G 大调旋律预渲染 AudioBuffer，100BPM 循环
+
+#### 4c. 音效触发点
+- 点击 Enter 进入世界 → `unlock()` 解锁音频
+- 打开面板 → `playMenuOpen()`，关闭面板 → `playMenuClose()`
+- 点击角色 → `playNotification()`
+- 点击 AUDIO 按钮 → `playClick()`
+
+#### 4d. 音频控制 UI
+- `AudioPanel` 组件：MASTER / BGM / SFX 三路像素风滑块
+- AUDIO 按钮左键切换静音 / 右键打开 AudioPanel
+- 动态音量图标：🔊/🔉/🔈/🔇（根据 muted + masterVol）
+
+#### 4e. 环境氛围增强
+- `.pixel-vignette`：CSS radial-gradient 屏幕四角暗角叠加（z-index 10）
+- `.pixel-cloud`：5 颗半透明云朵粒子，`cloud-drift` 动画横向漂移
+  不同速度/延迟/大小，营造视差景深感
+
+Phase 4 验收标准核查：
+- [x] 点击 UI 元素有 8-bit 音效反馈（点击角色/开关面板）
+- [x] 环境音可播放（办公室粉噪音循环，进入世界后自动启动）
+- [x] BGM 可播放（三角波 G 大调 lo-fi 循环）
+- [x] 音量可控制，有静音开关（AudioPanel 三路滑块 + AUDIO 按钮）
+- [x] 暗角效果可见（pixel-vignette CSS）
+- [x] 云朵漂浮效果（5 颗 pixel-cloud 粒子）
+- [x] `pnpm build` exit 0
+- [x] `pnpm test` 通过 (11 tests)
+
+Phase 4 完整交付 ✓
+
+## 上次质量门报告 (Phase 4 迭代 0)
+BUILD: ✓ PASS
+LINT: ✓ PASS（tsc 无错误）
 TEST: ✓ PASS (11 tests across 2 files)
