@@ -329,3 +329,14 @@ Phase 5 完整交付 ✓
 BUILD: ✓ PASS
 LINT: ✓ PASS（tsc 无错误）
 TEST: ✓ PASS (11 tests across 2 files)
+
+### Phase 5 迭代 1 完成
+
+#### lint 修复
+- `CharacterTabs.tsx`: 移除 `drawRadar` 的 `export`（仅内部使用，react-refresh/only-export-components）
+- `App.tsx`: 移除 useEffect 内直接 `setLoadProgress(0)` 调用（react-hooks/set-state-in-effect）
+
+## 上次质量门报告 (Phase 5 迭代 1)
+BUILD: ✓ PASS
+LINT: ✓ PASS（0 errors）
+TEST: ✓ PASS (11 tests across 2 files)
