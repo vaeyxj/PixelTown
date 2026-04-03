@@ -1,5 +1,5 @@
 # PixelTown Task Notes
-上次更新: Phase 2 迭代 2 完成
+上次更新: Phase 2 迭代 3 完成
 
 ## 已完成
 
@@ -72,9 +72,17 @@ Phase 2 验收标准核查：
 - **idle 呼吸动画**
   - npcManager update: idle/away 状态下 sprite.y 添加正弦浮动（振幅 0.5px）
 
+#### Phase 2 迭代 3 完成
+- **talk 微动画**
+  - `bubbleSystem.ts` 新增 `talkingIds: ReadonlySet<number>` — 追踪当前有气泡的角色 employee.id
+  - `ChatBubble` 新增 `charId` 字段：spawn 时 add，expire 时 delete
+  - `npcManager.update` 新增可选参数 `talkingIds?: ReadonlySet<number>`
+  - 当角色 ID 在 talkingIds 中：`sprite.x += Math.sin(emojiAnimTime * 9) * 0.8` 左右微摇
+  - `engine.ts` 修改 npcManager.update 调用，传入 `bubbleSystem.talkingIds`（行数不变，199 行）
+
 待完成（Phase 2 后续迭代）：
-- 角色阴影（椭圆形半透明投影，当前已有烘焙阴影但无独立层）
-- walk/talk 动画状态机继续完善（当前 walk 4 帧已有，talk 可加微动）
+- 角色阴影独立层（当前已有烘焙版阴影，独立层可改善深度排序）
+- 日出日落空气光斑粒子（emitAtmosphericDust 类型效果）
 
 ## 关键上下文
 - 项目在 apps/web/ 下，运行 pnpm build/lint/test 时需 cd apps/web
@@ -88,7 +96,7 @@ Phase 2 验收标准核查：
 ## 阻碍
 - 无当前阻碍
 
-## 上次质量门报告 (Phase 2 迭代 2)
+## 上次质量门报告 (Phase 2 迭代 3)
 BUILD: ✓ PASS
 LINT: ✓ PASS（build 包含 tsc 检查）
 TEST: ✓ PASS (11 tests across 2 files)
