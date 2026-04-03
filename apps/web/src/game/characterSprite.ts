@@ -71,9 +71,6 @@ function drawCharFrame(
   const legOffset = frame === 1 ? -1 : frame === 3 ? 1 : 0
   const bobY = (frame === 1 || frame === 3) ? -1 : 0
 
-  // 阴影
-  g.ellipse(x + 8, y + 23, 5, 2).fill({ color: 0x000000, alpha: 0.2 })
-
   // 头发后层
   if (ap.hairStyle === 'long') {
     px(g, x + 3, y + 2 + bobY, 10, 8, hair)
@@ -157,9 +154,6 @@ function drawSitFrame(
   const hair = ap.hairColor
   const shirt = ap.shirtColor
   const pants = ap.pantsColor
-
-  // 阴影（小，被桌子遮挡）
-  g.ellipse(x + 8, y + 23, 3, 1).fill({ color: 0x000000, alpha: 0.12 })
 
   // 头发后层
   if (ap.hairStyle === 'long') {

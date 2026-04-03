@@ -2,7 +2,7 @@
  * NPC 生命周期管理器
  * 创建、更新、销毁 NPC 精灵
  */
-import { Container, Sprite, Text, TextStyle } from 'pixi.js'
+import { Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js'
 import {
   generateCharacterFrames,
   generateAppearance,
@@ -20,6 +20,7 @@ import type { ParticleSystem } from './particleSystem'
 
 export interface CharEntry {
   sprite: Sprite
+  shadow: Graphics
   nameTag: Text
   emojiTag: Text
   charFrames: CharacterFrames
@@ -39,6 +40,7 @@ const WORKING_STATUSES: ReadonlySet<EmployeeStatus> = new Set(['working'])
 export function createNpcManager(
   app: Application,
   characterLayer: Container,
+  shadowLayer: Container,
   emojiLayer: Container,
   nameTagLayer: Container,
   characters: CharacterState[],
@@ -61,6 +63,12 @@ export function createNpcManager(
     sprite.on('pointerdown', (e) => { e.stopPropagation(); onCharacterClick(ch) })
     characterLayer.addChild(sprite)
 
+    const shadow = new Graphics()
+    shadow.ellipse(0, 0, 5, 2).fill({ color: 0x000000, alpha: 0.25 })
+    shadow.x = ch.x
+    shadow.y = ch.y
+    shadowLayer.addChild(shadow)
+
     const nameTag = new Text({
       text: ch.employee.name,
       style: new TextStyle({
@@ -80,7 +88,7 @@ export function createNpcManager(
     emojiTag.anchor.set(0.5, 1)
     emojiLayer.addChild(emojiTag)
 
-    return { sprite, nameTag, emojiTag, charFrames, state: ch, sitTimer: 0, glowTimer: Math.random() * 1.5 }
+    return { sprite, shadow, nameTag, emojiTag, charFrames, state: ch, sitTimer: 0, glowTimer: Math.random() * 1.5 }
   })
 
   return {
@@ -90,14 +98,16 @@ export function createNpcManager(
       updateCharacters(characters, dt, hour, minute)
 
       for (const entry of entries) {
-        const { sprite, nameTag, emojiTag, charFrames, state } = entry
+        const { sprite, shadow, nameTag, emojiTag, charFrames, state } = entry
         if (state.x < -100) {
           sprite.visible = false
+          shadow.visible = false
           nameTag.visible = false
           emojiTag.visible = false
           continue
         }
         sprite.visible = true
+        shadow.visible = true
         nameTag.visible = true
         emojiTag.visible = true
 
@@ -108,6 +118,8 @@ export function createNpcManager(
         sprite.x = state.x + talkWobble
         sprite.y = state.y
         sprite.zIndex = Math.floor(state.y)
+        shadow.x = state.x + talkWobble
+        shadow.y = state.y
 
         // 动画状态选择
         const isAtDesk = WORKING_STATUSES.has(state.status) && state.animFrame === 0
@@ -142,6 +154,7 @@ export function createNpcManager(
     destroy() {
       for (const entry of entries) {
         entry.sprite.destroy()
+        entry.shadow.destroy()
         entry.nameTag.destroy()
         entry.emojiTag.destroy()
       }

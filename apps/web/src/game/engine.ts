@@ -1,7 +1,7 @@
 /**
  * 游戏主引擎 — 组装并启动各子系统
  */
-import { Application, Container, Sprite, Text, TextStyle } from 'pixi.js'
+import { Application, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js'
 import { MAP_WIDTH, MAP_HEIGHT, TILE_SIZE } from './mapData'
 import { createOfficeMap } from './mapRenderer'
 import { generateCharacterFrames, generateAppearance, CHAR_H } from './characterSprite'
@@ -51,6 +51,9 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
 
   const { destroy: destroyMap } = createOfficeMap(app, worldContainer)
 
+  const shadowLayer = Object.assign(new Container(), { label: 'shadows' })
+  worldContainer.addChild(shadowLayer)
+
   const characterLayer = new Container()
   characterLayer.label = 'characters'
   characterLayer.sortableChildren = true
@@ -72,7 +75,7 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
 
   const particleSystem = createParticleSystem(particleLayer)
   const dayNightSystem = createDayNightSystem(worldContainer, worldW, worldH, particleSystem)
-  const npcManager = createNpcManager(app, characterLayer, emojiLayer, nameTagLayer, characters, callbacks.onCharacterClick, particleSystem)
+  const npcManager = createNpcManager(app, characterLayer, shadowLayer, emojiLayer, nameTagLayer, characters, callbacks.onCharacterClick, particleSystem)
 
   const playerFrames = generateCharacterFrames(app, { ...generateAppearance(9999), shirtColor: 0xe84040 })
   const entrance = getEntrancePosition()
@@ -89,6 +92,9 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
     },
     path: [],
   }
+  const playerShadow = new Graphics().ellipse(0, 0, 5, 2).fill({ color: 0x000000, alpha: 0.3 })
+  playerShadow.x = entrance.x; playerShadow.y = entrance.y; shadowLayer.addChild(playerShadow)
+
   const playerSprite = new Sprite({ texture: playerFrames.frames.down[0], anchor: { x: 0.5, y: 1 } })
   playerSprite.x = entrance.x; playerSprite.y = entrance.y
   playerSprite.scale.set(2); playerSprite.zIndex = 9999
@@ -148,6 +154,8 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
 
     playerSprite.x = playerState.x
     playerSprite.y = playerState.y
+    playerShadow.x = playerState.x
+    playerShadow.y = playerState.y
     playerSprite.texture = playerFrames.frames[playerState.direction][playerState.animFrame]
     playerSprite.zIndex = Math.floor(playerState.y)
     playerNameTag.x = playerState.x
