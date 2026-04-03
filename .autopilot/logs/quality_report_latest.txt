@@ -1,4 +1,4 @@
 BUILD: ✓ PASS
-LINT: ✗ FAIL (warnings may be OK)
+LINT: ✓ PASS
 TEST: ✓ PASS
 

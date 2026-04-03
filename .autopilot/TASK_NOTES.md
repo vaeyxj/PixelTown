@@ -46,7 +46,7 @@ Phase 1: **进行中**
 - /draw 生成美术需要手动审核，自动化循环中难以验证质量
 - 占位 PNG 已满足文件存在的验收标准，/draw 替换是视觉提升不是阻碍
 
-## 上次质量门报告
+## 上次质量门报告 (Phase 0 迭代 4)
 BUILD: ✓ PASS
-LINT: ✓ PASS
+LINT: ✓ PASS (上次验证通过，未改动)
 TEST: ✓ PASS (17 tests across 2 files)

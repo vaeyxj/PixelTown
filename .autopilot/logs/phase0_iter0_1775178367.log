@@ -1,0 +1,9 @@
+Phase 0 全部完成。质量门状态：
+
+- **BUILD**: ✓ PASS
+- **LINT**: ✓ PASS（修复了 ESLint `argsIgnorePattern: '^_'` 配置）
+- **TEST**: ✓ PASS（17 个测试，2 个文件）
+
+本次做了：
+1. `eslint.config.js` — 添加 `argsIgnorePattern: '^_'` 规则，使下划线前缀参数不报错
+2. `src/__tests__/simulation.test.ts` — 新增 11 个测试，覆盖 `generateEmployees`、`computeEmployeeState`、`initCharacterStates`、`getStatusCounts`、`getDaylightOverlay`

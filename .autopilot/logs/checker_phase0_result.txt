@@ -1,1 +1,1 @@
-PHASE_INCOMPLETE: LINT fail — `_text` (pixelSprites.ts:322) 和 `_total` (simulation.ts:98) 两个 unused vars 错误未修复
+PHASE_INCOMPLETE: src/data/employees.ts 不存在

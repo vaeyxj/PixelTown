@@ -121,19 +121,44 @@ get_last_commit() {
   git -C "$PROJECT_DIR" rev-parse HEAD 2>/dev/null || echo "none"
 }
 
+auto_commit_if_needed() {
+  # 如果 Claude 没有 commit，脚本自动 commit 未提交的变更
+  local phase=$1
+  local dirty
+  dirty=$(git -C "$PROJECT_DIR" status --porcelain -- . ':!.autopilot' 2>/dev/null | head -1)
+  if [[ -n "$dirty" ]]; then
+    log "检测到未提交的代码变更，自动 commit..."
+    (cd "$PROJECT_DIR" && git add -A && git commit -m "feat(phase-${phase}): autopilot iteration progress" 2>&1) || true
+  fi
+}
+
 check_meaningful_change() {
   local before_hash="$1"
-  local after_hash
-  after_hash=$(get_last_commit)
 
-  if [[ "$before_hash" == "$after_hash" ]]; then
-    return 1  # 无变更
+  # 先检查是否有未提交的变更（排除 .autopilot 目录）
+  local uncommitted
+  uncommitted=$(git -C "$PROJECT_DIR" diff --stat HEAD -- . ':!.autopilot' 2>/dev/null | tail -1 | grep -oE '[0-9]+' | head -1)
+  if [[ "${uncommitted:-0}" -gt 0 ]]; then
+    return 0  # 有未提交的代码变更
   fi
 
-  # 检查变更行数
-  local lines_changed
-  lines_changed=$(git -C "$PROJECT_DIR" diff --stat "$before_hash" "$after_hash" 2>/dev/null | tail -1 | grep -oE '[0-9]+' | head -1)
-  [[ "${lines_changed:-0}" -gt 5 ]]
+  # 检查未跟踪文件（排除 .autopilot）
+  local untracked
+  untracked=$(git -C "$PROJECT_DIR" ls-files --others --exclude-standard -- . ':!.autopilot' 2>/dev/null | head -1)
+  if [[ -n "$untracked" ]]; then
+    return 0  # 有新文件
+  fi
+
+  # 检查 commit 差异
+  local after_hash
+  after_hash=$(get_last_commit)
+  if [[ "$before_hash" != "$after_hash" ]]; then
+    local lines_changed
+    lines_changed=$(git -C "$PROJECT_DIR" diff --stat "$before_hash" "$after_hash" 2>/dev/null | tail -1 | grep -oE '[0-9]+' | head -1)
+    [[ "${lines_changed:-0}" -gt 5 ]] && return 0
+  fi
+
+  return 1  # 无变更
 }
 
 # --- 质量门 ---
@@ -275,8 +300,13 @@ PROMPT_EOF
   else
     local exit_code=$?
     log_error "Claude 退出码 $exit_code"
+    # 即使 Claude 报错，可能仍有部分工作完成，尝试 commit
+    auto_commit_if_needed "$phase"
     return 1
   fi
+
+  # 如果 Claude 没有自己 commit，帮它 commit
+  auto_commit_if_needed "$phase"
 
   # 检查有效变更
   if check_meaningful_change "$before_hash"; then
