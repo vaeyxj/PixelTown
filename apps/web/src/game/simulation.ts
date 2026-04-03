@@ -95,7 +95,7 @@ function pickRandom<T>(arr: readonly T[], rng: () => number): T {
 }
 
 /** 在区域内生成一个工位位置 (像素坐标) */
-function deskPositionInZone(zone: MapZone, index: number, total: number): { x: number; y: number } {
+function deskPositionInZone(zone: MapZone, index: number, _total: number): { x: number; y: number } {
   const px = zone.x * TILE_SIZE
   const py = zone.y * TILE_SIZE
   const pw = zone.width * TILE_SIZE

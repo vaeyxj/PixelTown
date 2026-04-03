@@ -319,7 +319,7 @@ export function drawCoffeeMachine(g: Graphics, px: number, py: number): void {
 }
 
 /** 绘制指示牌/标识，尺寸约 12x14 px */
-export function drawSign(g: Graphics, px: number, py: number, text: string): void {
+export function drawSign(g: Graphics, px: number, py: number, _text: string): void {
   // 牌子
   g.rect(px + 1, py, 10, 8).fill(0x2a4a6a)
   g.rect(px + 1, py, 10, 8).stroke({ color: 0x1a3a5a, width: 1 })
