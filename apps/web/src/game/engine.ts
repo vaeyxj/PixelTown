@@ -19,7 +19,7 @@ import { createPlayerController } from './playerController'
 import { createNpcManager } from './npcManager'
 import { createBubbleSystem } from './bubbleSystem'
 import { createParticleSystem } from './particleSystem'
-import { applyParallax, createBackgroundLayer } from './parallax'
+import { applyParallax, createBackgroundLayer, createForegroundLayer } from './parallax'
 
 export interface GameCallbacks {
   onStatsUpdate: (stats: Record<EmployeeStatus, number>, timeStr: string, onlineCount: number) => void
@@ -46,9 +46,11 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
   worldContainer.label = 'world'
   app.stage.addChild(worldContainer)
 
+  const fgLayer = createForegroundLayer(worldW, worldH)
+  app.stage.addChild(fgLayer)
+
   const { destroy: destroyMap } = createOfficeMap(app, worldContainer)
 
-  // 各图层
   const characterLayer = new Container()
   characterLayer.label = 'characters'
   characterLayer.sortableChildren = true
@@ -72,7 +74,8 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
   const { hour, minute } = clock.getTime()
   const characters = initCharacterStates(employees, hour, minute)
 
-  const npcManager = createNpcManager(app, characterLayer, emojiLayer, nameTagLayer, characters, callbacks.onCharacterClick)
+  const particleSystem = createParticleSystem(particleLayer)
+  const npcManager = createNpcManager(app, characterLayer, emojiLayer, nameTagLayer, characters, callbacks.onCharacterClick, particleSystem)
 
   const playerFrames = generateCharacterFrames(app, { ...generateAppearance(9999), shirtColor: 0xe84040 })
   const entrance = getEntrancePosition()
@@ -90,10 +93,8 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
     path: [],
   }
   const playerSprite = new Sprite({ texture: playerFrames.frames.down[0], anchor: { x: 0.5, y: 1 } })
-  playerSprite.x = entrance.x
-  playerSprite.y = entrance.y
-  playerSprite.scale.set(2)
-  playerSprite.zIndex = 9999
+  playerSprite.x = entrance.x; playerSprite.y = entrance.y
+  playerSprite.scale.set(2); playerSprite.zIndex = 9999
   characterLayer.addChild(playerSprite)
 
   const playerNameTag = new Text({
@@ -109,9 +110,8 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
   playerNameTag.anchor.set(0.5, 1)
   nameTagLayer.addChild(playerNameTag)
 
-  const parallaxLayers = [{ container: bgLayer, scrollFactor: 0.3 }]
+  const parallaxLayers = [{ container: bgLayer, scrollFactor: 0.3 }, { container: fgLayer, scrollFactor: 1.05 }]
   const bubbleSystem = createBubbleSystem(bubbleLayer)
-  const particleSystem = createParticleSystem(particleLayer)
   const playerController = createPlayerController()
   const camera = createCamera(app, worldContainer, worldW, worldH, entrance.x, entrance.y)
   camera.onAnimationEnd = callbacks.onReady
@@ -141,7 +141,6 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
       playerState.animTimer += dt
       if (playerState.animTimer > 0.12) { playerState.animTimer = 0; playerState.animFrame = (playerState.animFrame + 1) % 4 }
 
-      // 行走粒子
       if (Math.abs(playerState.x - lastPlayerX) > 2) {
         particleSystem.emitWalkDust(playerState.x, playerState.y)
       }
@@ -190,6 +189,7 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
       particleSystem.destroy()
       destroyMap()
       bgLayer.destroy({ children: true })
+      fgLayer.destroy({ children: true })
       worldContainer.destroy({ children: true })
     },
     startEntryAnimation() {

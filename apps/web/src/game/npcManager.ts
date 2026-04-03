@@ -16,6 +16,7 @@ import {
   type EmployeeStatus,
 } from './simulation'
 import type { Application } from 'pixi.js'
+import type { ParticleSystem } from './particleSystem'
 
 export interface CharEntry {
   sprite: Sprite
@@ -24,6 +25,7 @@ export interface CharEntry {
   charFrames: CharacterFrames
   state: CharacterState
   sitTimer: number
+  glowTimer: number
 }
 
 export interface NpcManager {
@@ -41,6 +43,7 @@ export function createNpcManager(
   nameTagLayer: Container,
   characters: CharacterState[],
   onCharacterClick: (char: CharacterState) => void,
+  particleSystem: ParticleSystem | null = null,
 ): NpcManager {
   const entries: CharEntry[] = characters.map(ch => {
     const appearance = generateAppearance(ch.employee.id)
@@ -77,7 +80,7 @@ export function createNpcManager(
     emojiTag.anchor.set(0.5, 1)
     emojiLayer.addChild(emojiTag)
 
-    return { sprite, nameTag, emojiTag, charFrames, state: ch, sitTimer: 0 }
+    return { sprite, nameTag, emojiTag, charFrames, state: ch, sitTimer: 0, glowTimer: Math.random() * 1.5 }
   })
 
   return {
@@ -108,9 +111,20 @@ export function createNpcManager(
           entry.sitTimer += dt
           const sitFrame = Math.floor(entry.sitTimer * 2) % 2
           sprite.texture = charFrames.sit[sitFrame]
+          // 键盘光效粒子（每 1.5s 触发一次）
+          entry.glowTimer += dt
+          if (entry.glowTimer >= 1.5) {
+            entry.glowTimer = 0
+            particleSystem?.emitKeyboardGlow(state.x, state.y - CHAR_H * 0.8)
+          }
         } else {
           sprite.texture = charFrames.frames[state.direction][state.animFrame]
         }
+
+        // idle/away 状态：轻微呼吸浮动
+        const isIdle = state.status === 'idle' || state.status === 'away'
+        const breathY = isIdle ? Math.sin(emojiAnimTime * 1.5 + state.employee.id * 1.7) * 0.5 : 0
+        sprite.y = state.y + breathY
 
         nameTag.x = state.x
         nameTag.y = state.y - CHAR_H * 2 - 2

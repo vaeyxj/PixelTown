@@ -31,6 +31,46 @@ export function applyParallax(
   }
 }
 
+/** 创建前景层：近处装饰盆栽，以 1.05x 速率滚动增加纵深感 */
+export function createForegroundLayer(worldW: number, worldH: number): Container {
+  const fg = new Container()
+  fg.label = 'foreground'
+  fg.alpha = 0.88
+
+  const g = new Graphics()
+  // 前景盆栽分布在走廊附近，Y 轴靠近地面
+  const positions = [
+    { x: 80,   y: 185 },
+    { x: 300,  y: 185 },
+    { x: 590,  y: 185 },
+    { x: 940,  y: 185 },
+    { x: 1190, y: 185 },
+    { x: 75,   y: 500 },
+    { x: 320,  y: 500 },
+    { x: 610,  y: 500 },
+    { x: 960,  y: 500 },
+    { x: 1380, y: 360 },
+    { x: 210,  y: 845 },
+    { x: 960,  y: 845 },
+  ]
+  for (const { x, y } of positions) drawFgPlant(g, x, y)
+  fg.addChild(g)
+
+  // 避免未使用参数警告
+  void worldW; void worldH
+  return fg
+}
+
+function drawFgPlant(g: Graphics, x: number, y: number): void {
+  g.rect(x - 5, y - 2, 10, 8).fill(0x8a5a3a)
+  g.rect(x - 6, y - 4, 12, 3).fill(0x6a3a1a)
+  g.rect(x - 1, y - 12, 2, 10).fill(0x3a7a2a)
+  g.ellipse(x, y - 16, 10, 7).fill(0x2a7a1a)
+  g.ellipse(x - 7, y - 13, 7, 5).fill(0x3a8a2a)
+  g.ellipse(x + 7, y - 13, 7, 5).fill(0x3a8a2a)
+  g.ellipse(x, y - 20, 6, 5).fill(0x4a9a2a)
+}
+
 /** 创建背景层：远景天际线，用简单像素风格绘制 */
 export function createBackgroundLayer(app: Application): Container {
   const bg = new Container()

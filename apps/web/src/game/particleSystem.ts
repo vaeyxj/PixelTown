@@ -21,6 +21,8 @@ const POOL_SIZE = 128
 
 export interface ParticleSystem {
   emitWalkDust(x: number, y: number): void
+  /** NPC 工作时键盘上方微光粒子 */
+  emitKeyboardGlow(x: number, y: number): void
   update(dt: number): void
   destroy(): void
 }
@@ -54,6 +56,22 @@ export function createParticleSystem(layer: Container): ParticleSystem {
         p.maxLife = p.life
         p.size = 1 + Math.random()
         p.color = 0xc0a880
+      }
+    },
+
+    emitKeyboardGlow(x, y) {
+      for (let i = 0; i < 3; i++) {
+        const p = acquire()
+        if (!p) return
+        p.active = true
+        p.x = x + (Math.random() - 0.5) * 8
+        p.y = y - 8 + (Math.random() - 0.5) * 3
+        p.vx = (Math.random() - 0.5) * 5
+        p.vy = -6 - Math.random() * 5
+        p.life = 0.5 + Math.random() * 0.3
+        p.maxLife = p.life
+        p.size = 0.5 + Math.random() * 0.5
+        p.color = Math.random() > 0.5 ? 0xffffff : 0xffe080
       }
     },
 
