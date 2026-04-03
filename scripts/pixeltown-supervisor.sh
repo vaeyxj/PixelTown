@@ -32,7 +32,6 @@ TOTAL_PHASES=6
 
 # Claude 参数
 CLAUDE_MODEL="sonnet"                    # 用 sonnet 执行，性价比最优
-CLAUDE_TIMEOUT=600                       # 每次调用最大秒数
 
 # --- 启动检查 ---
 for cmd in claude pnpm git python3; do
@@ -267,7 +266,7 @@ PROMPT_EOF
   local iter_log="$LOG_DIR/phase${phase}_iter${iteration}_$(date +%s).log"
 
   # 运行 Claude
-  if (cd "$PROJECT_DIR" && timeout "${CLAUDE_TIMEOUT}" claude -p "$full_prompt" \
+  if (cd "$PROJECT_DIR" && claude -p "$full_prompt" \
     --model "$CLAUDE_MODEL" \
     --allowedTools "Read,Write,Edit,Bash,Grep,Glob,Skill" \
     --permission-mode bypassPermissions \
@@ -275,11 +274,7 @@ PROMPT_EOF
     log_success "Claude 执行完成"
   else
     local exit_code=$?
-    if [[ $exit_code -eq 124 ]]; then
-      log_error "Claude 超时 (${CLAUDE_TIMEOUT}s)"
-    else
-      log_error "Claude 退出码 $exit_code"
-    fi
+    log_error "Claude 退出码 $exit_code"
     return 1
   fi
 
@@ -301,7 +296,7 @@ run_recovery() {
   local last_error
   last_error=$(tail -50 "$LOG_DIR"/phase${phase}_iter*_*.log 2>/dev/null | tail -20)
 
-  (cd "$PROJECT_DIR" && timeout 300 claude -p "$(cat <<RECOVERY_EOF
+  (cd "$PROJECT_DIR" && claude -p "$(cat <<RECOVERY_EOF
 上一次迭代失败了。以下是最近的错误日志:
 $last_error
 
@@ -320,7 +315,7 @@ run_escalation() {
   local stale_count=$2
   log_warn "连续 $stale_count 次无进展，尝试换策略..."
 
-  (cd "$PROJECT_DIR" && timeout 300 claude -p "$(cat <<ESCALATION_EOF
+  (cd "$PROJECT_DIR" && claude -p "$(cat <<ESCALATION_EOF
 你在 Phase $phase 已经 $stale_count 次迭代没有产生有意义的代码变更。
 
 读取 .autopilot/TASK_NOTES.md 和 .autopilot/phase_prompts/phase_${phase}.md 了解上下文。
@@ -342,7 +337,7 @@ run_desloppify() {
   local phase=$1
   log "运行 de-sloppify 清理..."
 
-  (cd "$PROJECT_DIR" && timeout 300 claude -p "$(cat <<DESLOP_EOF
+  (cd "$PROJECT_DIR" && claude -p "$(cat <<DESLOP_EOF
 审查 PixelTown 项目中 Phase $phase 期间的所有改动。
 
 删除:
