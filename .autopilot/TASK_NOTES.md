@@ -281,3 +281,51 @@ Phase 4 完整交付 ✓
 BUILD: ✓ PASS
 LINT: ✓ PASS（tsc 无错误）
 TEST: ✓ PASS (11 tests across 2 files)
+
+### Phase 5 迭代 0 完成
+
+#### 5a. 移动端适配
+- `VirtualJoystick.tsx`: 左下角半透明摇杆，触控事件控制方向，归位动画
+- `playerController.ts`: 新增 `setMobileInput(dx, dy)` 接受外部摇杆输入
+- `engine.ts`: 新增 `setMobileInput` 接口，透传到 playerController
+- `PixelCanvas.tsx`: `onEngineReady` 回调暴露 engine 引用给 App
+- `CharacterPanel.tsx`: 移动端全屏显示（`pointer: coarse` 检测）
+- `index.html`: viewport meta `maximum-scale=1.0 user-scalable=no` 禁止双指缩放
+
+#### 5b. 性能优化
+- **视口裁剪**: `npcManager.ts` update 接受 `viewport` 参数，仅渲染视口内（+64px margin）精灵
+- **FPS 监控**: `engine.ts` 追踪 fpsLow 计数器，60 帧低于 30fps 则启用低性能模式
+- **低性能模式**: 跳过行走尘土粒子 + 大气粒子
+
+#### 5c. Loading 屏
+- `LoadingScreen.tsx`: 全屏像素风加载页，16 段分段进度条，900ms 随机切换趣味提示
+- `App.tsx`: 进入后模拟进度（0→90%），`onReady` 后跳至 100%，淡出
+
+#### 5d. PWA
+- `public/manifest.json`: name/short_name/theme_color/display:standalone
+- `public/sw.js`: install/activate/fetch 基础缓存策略
+- `App.tsx`: useEffect 注册 service worker
+
+#### 5e. SEO + Meta
+- `index.html`: 页面标题 / description / OG meta / manifest link
+
+#### 5f. 代码清理
+- `CharacterPanel.tsx`: 467 → 105 行，Tab 内容提取到 `CharacterTabs.tsx`
+- `simulation.ts`: 403 → 382 行
+
+## Phase 5 验收标准核查
+- [x] 移动端可操作（虚拟摇杆 VirtualJoystick）
+- [x] 移动端 UI 响应式（CharacterPanel 全屏，禁止双指缩放）
+- [x] Loading 屏有进度条和趣味文字
+- [x] PWA manifest 和 service worker 就位
+- [x] `pnpm build` exit 0
+- [x] `pnpm test` 全部通过（11 tests）
+- [x] 无 console.log 残留
+- [x] 所有代码文件 < 400 行（数据文件 employees.ts/mapData.ts 除外）
+
+Phase 5 完整交付 ✓
+
+## 上次质量门报告 (Phase 5 迭代 0)
+BUILD: ✓ PASS
+LINT: ✓ PASS（tsc 无错误）
+TEST: ✓ PASS (11 tests across 2 files)
