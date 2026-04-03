@@ -20,6 +20,7 @@ export interface DayNightSystem {
     camScale: number,
     screenW: number,
     screenH: number,
+    lowPerf?: boolean,
   ): void
   destroy(): void
 }
@@ -36,7 +37,7 @@ export function createDayNightSystem(
   let dustTimer = 0
 
   return {
-    update(hour, minute, dt, camX, camY, camScale, screenW, screenH) {
+    update(hour, minute, dt, camX, camY, camScale, screenW, screenH, lowPerf = false) {
       // 天色遮罩
       const daylight = getDaylightOverlay(hour, minute)
       overlay.clear()
@@ -50,6 +51,7 @@ export function createDayNightSystem(
       const isDusk = t >= 17 && t < 20
       if (!isDawn && !isDusk) { dustTimer = 0; return }
 
+      if (lowPerf) { dustTimer = 0; return }
       dustTimer += dt
       // 每 100ms 发射一颗粒子
       while (dustTimer >= 0.1) {

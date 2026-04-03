@@ -6,9 +6,10 @@ import { preloadAll } from '../game/spriteLoader'
 interface Props {
   readonly started: boolean
   readonly callbacks: GameCallbacks
+  readonly onEngineReady?: (engine: { setMobileInput: (dx: number, dy: number) => void }) => void
 }
 
-export function PixelCanvas({ started, callbacks }: Props) {
+export function PixelCanvas({ started, callbacks, onEngineReady }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const engineRef = useRef<GameEngine | null>(null)
   const appRef = useRef<Application | null>(null)
@@ -52,9 +53,11 @@ export function PixelCanvas({ started, callbacks }: Props) {
 
       try {
         await preloadAll()
-        engineRef.current = createGameEngine(app, callbacks)
-      } catch (err) {
-        console.error('Engine init failed:', err)
+        const engine = createGameEngine(app, callbacks)
+        engineRef.current = engine
+        onEngineReady?.(engine)
+      } catch {
+        // Engine init failed
       }
     }
 

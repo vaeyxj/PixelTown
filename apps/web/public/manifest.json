@@ -1,0 +1,20 @@
+{
+  "name": "PixelTown - AI教育像素办公世界",
+  "short_name": "PixelTown",
+  "description": "像素风 RPG 办公世界，展示 AI 教育公司的真实团队状态与活动。",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "theme_color": "#060d18",
+  "background_color": "#060d18",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "lang": "zh-CN"
+}

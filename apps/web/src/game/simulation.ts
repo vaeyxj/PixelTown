@@ -353,51 +353,30 @@ export class SimClock {
 /** 根据小时返回天色遮罩颜色和透明度 */
 export function getDaylightOverlay(hour: number, minute: number): { color: number; alpha: number } {
   const t = hour + minute / 60
-  if (t < 10) return { color: 0x1a2040, alpha: 0.15 } // 早晨微暗
-  if (t < 12) return { color: 0x000000, alpha: 0 }     // 上午明亮
-  if (t < 14) return { color: 0xffa830, alpha: 0.04 }   // 中午微暖
-  if (t < 17) return { color: 0x000000, alpha: 0 }      // 下午明亮
-  if (t < 19) return { color: 0xff8020, alpha: 0.08 }   // 傍晚暖色
-  if (t < 20) return { color: 0x1a1840, alpha: 0.15 }   // 晚上微暗
-  return { color: 0x0a0820, alpha: 0.25 }               // 深夜
+  const table: [number, number, number][] = [
+    [10, 0x1a2040, 0.15], [12, 0x000000, 0], [14, 0xffa830, 0.04],
+    [17, 0x000000, 0], [19, 0xff8020, 0.08], [20, 0x1a1840, 0.15],
+  ]
+  const found = table.find(([h]) => t < h)
+  return found ? { color: found[1], alpha: found[2] } : { color: 0x0a0820, alpha: 0.25 }
 }
 
 /** 状态对应的 emoji */
 export const STATUS_EMOJI: Record<EmployeeStatus, string> = {
-  working: '💻',
-  meeting: '🗣️',
-  lunch: '🍱',
-  dinner: '🍽️',
-  walking: '🚶',
-  idle: '😊',
-  away: '',
+  working: '💻', meeting: '🗣️', lunch: '🍱',
+  dinner: '🍽️', walking: '🚶', idle: '😊', away: '',
 }
 
-/** 随机对话内容池 — AI 教育公司日常 */
 const CHAT_MESSAGES = [
-  '大模型 API 又涨价了...',
-  '今天 GPT-5 内测结果怎么样？',
-  '课程效果数据出来了 🎯',
-  'RAG 检索精度还要优化',
-  '学员完课率提升了 12%！',
-  '今天 AI 助教回复质量有点差',
-  '知识图谱更新完了',
-  '语音识别漏字严重...',
-  '个性化推荐上线 🚀',
-  '今天 demo 效果超出预期！',
-  '提示词工程真的是门学问',
-  '模型幻觉问题还没解决',
-  '下周 AI 大会要分享 PPT',
-  '多模态课件交互太炸了！',
-  '微调数据集打完标签了',
-  'Agent 框架换 LangGraph 了',
-  '智能评测准确率 94% ✨',
-  '向量数据库要迁移了',
-  '今晚要部署新版本吗？',
-  '教研 + 算法双周会几点？',
+  '大模型 API 又涨价了...', '今天 GPT-5 内测结果怎么样？', '课程效果数据出来了 🎯',
+  'RAG 检索精度还要优化', '学员完课率提升了 12%！', '今天 AI 助教回复质量有点差',
+  '知识图谱更新完了', '语音识别漏字严重...', '个性化推荐上线 🚀',
+  '今天 demo 效果超出预期！', '提示词工程真的是门学问', '模型幻觉问题还没解决',
+  '下周 AI 大会要分享 PPT', '多模态课件交互太炸了！', '微调数据集打完标签了',
+  'Agent 框架换 LangGraph 了', '智能评测准确率 94% ✨', '向量数据库要迁移了',
+  '今晚要部署新版本吗？', '教研 + 算法双周会几点？',
 ]
 
-/** 随机获取一条聊天消息 */
 export function getRandomChat(): string {
   return CHAT_MESSAGES[Math.floor(Math.random() * CHAT_MESSAGES.length)]
 }

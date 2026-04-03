@@ -1,6 +1,8 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { PixelCanvas } from './components/PixelCanvas'
 import { LoginScreen } from './components/LoginScreen'
+import { LoadingScreen } from './components/LoadingScreen'
+import { VirtualJoystick } from './components/VirtualJoystick'
 import { StatsPanel, MiniMap, BottomToolbar, AudioPanel } from './components/HUD'
 import { CharacterPanel } from './components/CharacterPanel'
 import { EmployeeGrid } from './components/EmployeeGrid'
@@ -41,6 +43,30 @@ function App() {
   const [showLogin, setShowLogin] = useState(true)
   const [started, setStarted] = useState(false)
   const [hudVisible, setHudVisible] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [loadProgress, setLoadProgress] = useState(0)
+  const loadTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Register service worker
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => { /* ignore */ })
+    }
+  }, [])
+
+  // Simulate loading progress after entering world
+  useEffect(() => {
+    if (!loading) return
+    setLoadProgress(0)
+    let prog = 0
+    loadTimerRef.current = setInterval(() => {
+      prog = Math.min(prog + Math.random() * 0.08, 0.9)
+      setLoadProgress(prog)
+    }, 180)
+    return () => {
+      if (loadTimerRef.current) clearInterval(loadTimerRef.current)
+    }
+  }, [loading])
 
   // HUD state
   const [stats, setStats] = useState<Record<EmployeeStatus, number>>({
@@ -57,6 +83,8 @@ function App() {
   const { toasts, show: showToast } = useToast()
 
   const lastMiniMapUpdate = useRef(0)
+  const engineRef = useRef<{ setMobileInput: (dx: number, dy: number) => void } | null>(null)
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 
   const callbacks: GameCallbacks = {
     onStatsUpdate: useCallback((s, t, c) => {
@@ -77,7 +105,13 @@ function App() {
       audioManager.playNotification()
     }, []),
     onReady: useCallback(() => {
-      setHudVisible(true)
+      // Complete loading progress
+      if (loadTimerRef.current) clearInterval(loadTimerRef.current)
+      setLoadProgress(1)
+      setTimeout(() => {
+        setLoading(false)
+        setHudVisible(true)
+      }, 500)
     }, []),
   }
 
@@ -85,6 +119,7 @@ function App() {
     audioManager.unlock()
     setShowLogin(false)
     setStarted(true)
+    setLoading(true)
   }
 
   const PANEL_TOAST: Record<NonNullable<ActivePanel>, { icon: string; text: string }> = {
@@ -122,7 +157,11 @@ function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#060d18' }}>
-      <PixelCanvas started={started} callbacks={callbacks} />
+      <PixelCanvas
+        started={started}
+        callbacks={callbacks}
+        onEngineReady={engine => { engineRef.current = engine }}
+      />
 
       {/* 云朵粒子（视差背景叠加） */}
       {started && clouds.map((c, i) => (
@@ -143,6 +182,7 @@ function App() {
       {started && <div className="pixel-vignette" />}
 
       {showLogin && <LoginScreen onEnter={handleEnter} />}
+      {loading && <LoadingScreen progress={loadProgress} onDone={() => setLoading(false)} />}
 
       {hudVisible && (
         <>
@@ -192,21 +232,28 @@ function App() {
             />
           )}
 
-          {/* 操作提示 */}
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 84,
-              left: 16,
-              fontSize: 10,
-              color: 'rgba(74, 106, 154, 0.5)',
-              fontFamily: 'monospace',
-              zIndex: 50,
-              letterSpacing: 1,
-            }}
-          >
-            WASD 移动 · 滚轮缩放 · 点击角色
-          </div>
+          {/* 虚拟摇杆（移动端） */}
+          {isMobile && (
+            <VirtualJoystick onInput={(dx, dy) => engineRef.current?.setMobileInput(dx, dy)} />
+          )}
+
+          {/* 操作提示（仅桌面端） */}
+          {!isMobile && (
+            <div
+              style={{
+                position: 'fixed',
+                bottom: 84,
+                left: 16,
+                fontSize: 10,
+                color: 'rgba(74, 106, 154, 0.5)',
+                fontFamily: 'monospace',
+                zIndex: 50,
+                letterSpacing: 1,
+              }}
+            >
+              WASD 移动 · 滚轮缩放 · 点击角色
+            </div>
+          )}
 
           {/* Toast 通知层 */}
           <div

@@ -31,6 +31,7 @@ export interface GameCallbacks {
 export interface GameEngine {
   destroy: () => void
   startEntryAnimation: () => void
+  setMobileInput: (dx: number, dy: number) => void
 }
 
 const PLAYER_SPEED = 100
@@ -124,6 +125,7 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
   let lastTime = performance.now()
   let emojiAnimTime = 0
   let lastPlayerX = entrance.x
+  let fpsLow = 0 // frames below 30fps counter
 
   const gameLoop = () => {
     const now = performance.now()
@@ -131,6 +133,11 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
     lastTime = now
 
     if (camera.updateEntryAnimation(dt)) return
+
+    // FPS 监控：持续低于 30fps 则减少粒子
+    const fps = 1 / dt
+    fpsLow = fps < 30 ? fpsLow + 1 : Math.max(0, fpsLow - 1)
+    const lowPerf = fpsLow > 60
 
     const { hour: h, minute: m, timeStr } = clock.getTime()
     emojiAnimTime += dt
@@ -144,7 +151,7 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
       playerState.animTimer += dt
       if (playerState.animTimer > 0.12) { playerState.animTimer = 0; playerState.animFrame = (playerState.animFrame + 1) % 4 }
 
-      if (Math.abs(playerState.x - lastPlayerX) > 2) {
+      if (!lowPerf && Math.abs(playerState.x - lastPlayerX) > 2) {
         particleSystem.emitWalkDust(playerState.x, playerState.y)
       }
     } else {
@@ -161,10 +168,11 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
     playerNameTag.x = playerState.x
     playerNameTag.y = playerState.y - CHAR_H * 2 - 8
 
-    npcManager.update(dt, h, m, emojiAnimTime, bubbleSystem.talkingIds)
+    const vp = { x: -worldContainer.x / camera.scale, y: -worldContainer.y / camera.scale, w: app.screen.width / camera.scale, h: app.screen.height / camera.scale }
+    npcManager.update(dt, h, m, emojiAnimTime, bubbleSystem.talkingIds, vp)
     bubbleSystem.update(dt, npcManager.entries)
     particleSystem.update(dt)
-    dayNightSystem.update(h, m, dt, worldContainer.x, worldContainer.y, camera.scale, app.screen.width, app.screen.height)
+    dayNightSystem.update(h, m, dt, worldContainer.x, worldContainer.y, camera.scale, app.screen.width, app.screen.height, lowPerf)
 
     camera.update(playerState.x, playerState.y)
     applyParallax(parallaxLayers, worldContainer.x, worldContainer.y, app.screen.width, app.screen.height)
@@ -194,6 +202,9 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
     },
     startEntryAnimation() {
       camera.startEntryAnimation()
+    },
+    setMobileInput(dx: number, dy: number) {
+      playerController.setMobileInput(dx, dy)
     },
   }
 }

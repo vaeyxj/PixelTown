@@ -1,0 +1,11 @@
+Done. Changes made to Phase 4 code:
+
+**`audioManager.ts`** — removed 5 dead methods never called from the app:
+- `playFootstep()`, `playKeyboard()`
+- `stopAmbience()`, `stopBGM()`
+- `get ready()`
+
+**`synthAudio.ts`** — removed 2 exported functions that were only referenced by the deleted manager methods:
+- `playFootstep()`, `playKeyboard()`
+
+Everything else in Phase 4 is clean — no console.logs, no commented-out code, no unused imports. Build and lint pass.

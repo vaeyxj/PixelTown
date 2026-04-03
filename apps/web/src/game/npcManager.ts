@@ -29,9 +29,13 @@ export interface CharEntry {
   glowTimer: number
 }
 
+export interface Viewport {
+  x: number; y: number; w: number; h: number
+}
+
 export interface NpcManager {
   readonly entries: readonly CharEntry[]
-  update(dt: number, hour: number, minute: number, emojiAnimTime: number, talkingIds?: ReadonlySet<number>): void
+  update(dt: number, hour: number, minute: number, emojiAnimTime: number, talkingIds?: ReadonlySet<number>, viewport?: Viewport): void
   destroy(): void
 }
 
@@ -94,12 +98,18 @@ export function createNpcManager(
   return {
     entries,
 
-    update(dt, hour, minute, emojiAnimTime, talkingIds?) {
+    update(dt, hour, minute, emojiAnimTime, talkingIds?, viewport?) {
       updateCharacters(characters, dt, hour, minute)
 
+      const margin = 64 // px margin outside viewport
       for (const entry of entries) {
         const { sprite, shadow, nameTag, emojiTag, charFrames, state } = entry
-        if (state.x < -100) {
+        const offscreen = state.x < -100
+        const culled = viewport !== undefined && (
+          state.x < viewport.x - margin || state.x > viewport.x + viewport.w + margin ||
+          state.y < viewport.y - margin || state.y > viewport.y + viewport.h + margin
+        )
+        if (offscreen || culled) {
           sprite.visible = false
           shadow.visible = false
           nameTag.visible = false
