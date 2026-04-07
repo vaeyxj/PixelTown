@@ -17,6 +17,14 @@ export interface LoadedScene {
   readonly tilesets: ReadonlyMap<string, LoadedTileset>
 }
 
+/** 从图片文件（File/Blob）加载瓦片集纹理 */
+export async function loadTilesetFromBlob(file: Blob, def: TilesetDef): Promise<LoadedTileset> {
+  const url = URL.createObjectURL(file)
+  const texture = await Assets.load<Texture>(url)
+  const textures = sliceTileset(texture, def)
+  return { def, textures }
+}
+
 /** 将瓦片集图片切割为 Texture 数组 */
 function sliceTileset(baseTexture: Texture, def: TilesetDef): Texture[] {
   const textures: Texture[] = []

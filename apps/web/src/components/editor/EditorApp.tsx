@@ -4,7 +4,7 @@
  */
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { Application } from 'pixi.js'
-import { loadScene, type LoadedScene } from '../../game/editor/sceneLoader'
+import { loadScene, loadTilesetFromBlob, type LoadedScene } from '../../game/editor/sceneLoader'
 import { EditorViewport } from '../../game/editor/EditorViewport'
 import { EditorState } from '../../game/editor/EditorState'
 import { PanTool } from '../../game/editor/tools/PanTool'
@@ -270,15 +270,18 @@ export function EditorApp({ onExit }: EditorAppProps) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onExit, switchTool, handleUndo, handleRedo])
 
-  // 素材导入
-  const handleImportTileset = useCallback((tileset: TilesetDef, _imageFile: File) => {
+  // 素材导入：从文件直接加载纹理，无需手动复制图片
+  const handleImportTileset = useCallback(async (tileset: TilesetDef, imageFile: File) => {
     const es = editorStateRef.current
-    if (!es) return
-    // 注意：实际的图片文件需要放到 public/maps/tilesets/ 目录
-    // 这里先添加 tileset 定义，图片需要手动放置后刷新
+    if (!es || !scene) return
+    const loaded = await loadTilesetFromBlob(imageFile, tileset)
+    const newTilesets = new Map(scene.tilesets)
+    newTilesets.set(tileset.id, loaded)
+    const updatedScene: LoadedScene = { data: scene.data, tilesets: newTilesets }
+    setScene(updatedScene)
     es.addTileset(tileset)
     refresh()
-  }, [refresh])
+  }, [scene, refresh])
 
   // 加载场景文件
   const handleLoad = useCallback(() => {
