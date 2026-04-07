@@ -74,7 +74,7 @@ function TileGrid({ tileset, scene, selectedTile, onSelectTile }: TileGridProps)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const loaded = scene.tilesets.get(tileset.id)
 
-  const displayCols = Math.min(tileset.columns, 12)
+  const displayCols = tileset.columns
   const rows = Math.ceil(tileset.tileCount / displayCols)
   const cellSize = 24 // 显示尺寸
   const canvasW = displayCols * cellSize
@@ -118,33 +118,38 @@ function TileGrid({ tileset, scene, selectedTile, onSelectTile }: TileGridProps)
         ctx.strokeRect(dx + 1, dy + 1, cellSize - 2, cellSize - 2)
       }
     }
-  }, [tileset, loaded, selectedTile, canvasW, canvasH, displayCols])
+  }, [tileset, loaded, selectedTile, canvasW, canvasH, displayCols, cellSize])
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
+    const canvas = e.currentTarget
+    const rect = canvas.getBoundingClientRect()
+    // CSS 缩放校正：canvas 实际像素 vs CSS 显示尺寸
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    const x = (e.clientX - rect.left) * scaleX
+    const y = (e.clientY - rect.top) * scaleY
     const col = Math.floor(x / cellSize)
     const row = Math.floor(y / cellSize)
     const tileIndex = row * displayCols + col
-    if (tileIndex >= 0 && tileIndex < tileset.tileCount) {
+    if (col < displayCols && tileIndex >= 0 && tileIndex < tileset.tileCount) {
       onSelectTile(tileset.id, tileIndex)
     }
   }
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={canvasW}
-      height={canvasH}
-      onClick={handleClick}
-      style={{
-        display: 'block',
-        imageRendering: 'pixelated',
-        cursor: 'pointer',
-        border: '1px solid #2a2a4a',
-        maxWidth: '100%',
-      }}
-    />
+    <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+      <canvas
+        ref={canvasRef}
+        width={canvasW}
+        height={canvasH}
+        onClick={handleClick}
+        style={{
+          display: 'block',
+          imageRendering: 'pixelated',
+          cursor: 'pointer',
+          border: '1px solid #2a2a4a',
+        }}
+      />
+    </div>
   )
 }

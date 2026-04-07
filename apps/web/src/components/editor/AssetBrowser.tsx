@@ -45,6 +45,7 @@ export function AssetBrowser({ tilesets, onImportTileset }: AssetBrowserProps) {
       onImportTileset(tileset, file)
       URL.revokeObjectURL(url)
     }
+    img.onerror = () => URL.revokeObjectURL(url)
     img.src = url
 
     // 清空 input 以支持重复选择同一文件

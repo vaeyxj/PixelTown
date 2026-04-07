@@ -87,9 +87,14 @@ export class EditorViewport {
     if (this.currentTool) {
       this.currentTool.deactivate()
     }
+    // 清理旧的工具覆盖层
+    const oldOverlays = this.overlayContainer.children.filter(c => c.label === 'tool-overlay')
+    for (const overlay of oldOverlays) {
+      this.overlayContainer.removeChild(overlay)
+      overlay.destroy({ children: true })
+    }
     this.currentTool = tool
     if (tool) {
-      // 工具覆盖层：在 overlayContainer 中，网格之上
       const toolOverlay = new Container()
       toolOverlay.label = 'tool-overlay'
       this.overlayContainer.addChild(toolOverlay)

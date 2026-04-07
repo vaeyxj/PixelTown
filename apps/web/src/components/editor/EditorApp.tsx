@@ -34,7 +34,10 @@ export function EditorApp({ onExit }: EditorAppProps) {
   const appRef = useRef<Application | null>(null)
   const editorStateRef = useRef<EditorState | null>(null)
   const historyRef = useRef<EditorHistory>(new EditorHistory())
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
 
+  const [leftPanelWidth, setLeftPanelWidth] = useState(200)
+  const isDraggingRef = useRef(false)
   const [activeTool, setActiveTool] = useState<ToolType>('select')
   const [selectedObject, setSelectedObject] = useState<SceneObject | null>(null)
   const [selectedZone, setSelectedZone] = useState<ZoneData | null>(null)
@@ -154,6 +157,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
           }
         })
         resizeObserver.observe(el)
+        resizeObserverRef.current = resizeObserver
 
         // 加载场景
         const loadedScene = await loadScene('/maps/office.scene.json')
@@ -203,6 +207,8 @@ export function EditorApp({ onExit }: EditorAppProps) {
 
     return () => {
       cancelled = true
+      resizeObserverRef.current?.disconnect()
+      resizeObserverRef.current = null
       viewportRef.current?.destroy()
       viewportRef.current = null
       if (appRef.current) {
@@ -269,6 +275,31 @@ export function EditorApp({ onExit }: EditorAppProps) {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onExit, switchTool, handleUndo, handleRedo])
+
+  // 左侧边栏拖拽调整宽度
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    isDraggingRef.current = true
+    const startX = e.clientX
+    const startWidth = leftPanelWidth
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDraggingRef.current) return
+      const newWidth = Math.max(150, Math.min(600, startWidth + ev.clientX - startX))
+      setLeftPanelWidth(newWidth)
+    }
+    const onMouseUp = () => {
+      isDraggingRef.current = false
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  }, [leftPanelWidth])
 
   // 素材导入：从文件直接加载纹理，无需手动复制图片
   const handleImportTileset = useCallback(async (tileset: TilesetDef, imageFile: File) => {
@@ -415,9 +446,8 @@ export function EditorApp({ onExit }: EditorAppProps) {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* 左侧面板：图层 + 瓦片集 */}
         <div style={{
-          width: 200,
+          width: leftPanelWidth,
           background: '#0d0d1a',
-          borderRight: '1px solid #2a2a4a',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -436,7 +466,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
           </div>
 
           {/* 瓦片集面板 */}
-          <div style={{ padding: 8, overflowY: 'auto', flex: 1, borderBottom: '1px solid #2a2a4a' }}>
+          <div style={{ padding: 8, overflowY: 'auto', overflowX: 'auto', flex: 1, borderBottom: '1px solid #2a2a4a' }}>
             {scene && (
               <TilesetPanel
                 scene={scene}
@@ -454,6 +484,20 @@ export function EditorApp({ onExit }: EditorAppProps) {
             />
           </div>
         </div>
+
+        {/* 可拖拽分隔条 */}
+        <div
+          onMouseDown={handleResizeStart}
+          style={{
+            width: 5,
+            cursor: 'col-resize',
+            background: isDraggingRef.current ? '#4a6a9a' : '#2a2a4a',
+            flexShrink: 0,
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = '#4a6a9a')}
+          onMouseLeave={e => { if (!isDraggingRef.current) e.currentTarget.style.background = '#2a2a4a' }}
+        />
 
         {/* 画布 */}
         <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
