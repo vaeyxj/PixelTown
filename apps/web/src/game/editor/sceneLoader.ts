@@ -1,7 +1,7 @@
 /**
  * 场景加载器 — 加载 scene JSON 和瓦片集纹理
  */
-import { Assets, Texture, Rectangle } from 'pixi.js'
+import { Assets, Texture, Rectangle, ImageSource } from 'pixi.js'
 import type { SceneData, TilesetDef } from './types'
 
 /** 每个瓦片集加载后的运行时数据 */
@@ -20,8 +20,13 @@ export interface LoadedScene {
 /** 从图片文件（File/Blob）加载瓦片集纹理 */
 export async function loadTilesetFromBlob(file: Blob, def: TilesetDef): Promise<LoadedTileset> {
   const url = URL.createObjectURL(file)
-  const texture = await Assets.load<Texture>(url)
-  const textures = sliceTileset(texture, def)
+  const img = new Image()
+  img.src = url
+  await img.decode()
+  const source = new ImageSource({ resource: img })
+  const baseTexture = new Texture({ source })
+  URL.revokeObjectURL(url)
+  const textures = sliceTileset(baseTexture, def)
   return { def, textures }
 }
 

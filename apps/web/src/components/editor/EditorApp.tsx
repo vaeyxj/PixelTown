@@ -277,9 +277,10 @@ export function EditorApp({ onExit }: EditorAppProps) {
     const loaded = await loadTilesetFromBlob(imageFile, tileset)
     const newTilesets = new Map(scene.tilesets)
     newTilesets.set(tileset.id, loaded)
-    const updatedScene: LoadedScene = { data: scene.data, tilesets: newTilesets }
-    setScene(updatedScene)
     es.addTileset(tileset)
+    const updatedData = es.toSceneData()
+    const updatedScene: LoadedScene = { data: updatedData, tilesets: newTilesets }
+    setScene(updatedScene)
     refresh()
   }, [scene, refresh])
 
