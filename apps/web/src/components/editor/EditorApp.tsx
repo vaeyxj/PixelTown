@@ -26,6 +26,27 @@ import { AnimationEditor } from './AnimationEditor'
 
 type ToolType = 'select' | 'pan' | 'brush' | 'eraser' | 'fill' | 'rect' | 'line' | 'collision' | 'object' | 'zone'
 
+/** 工具所需的图层类型，null 表示通用 */
+const TOOL_LAYER_TYPE: Record<ToolType, 'tile' | 'collision' | 'object' | null> = {
+  select: null,
+  pan: null,
+  brush: 'tile',
+  eraser: 'tile',
+  fill: 'tile',
+  rect: 'tile',
+  line: 'tile',
+  collision: 'collision',
+  object: 'object',
+  zone: null,
+}
+
+/** 图层类型对应的默认工具 */
+const LAYER_DEFAULT_TOOL: Record<string, ToolType> = {
+  tile: 'brush',
+  collision: 'collision',
+  object: 'select',
+}
+
 interface EditorAppProps {
   readonly onExit: () => void
 }
@@ -103,29 +124,71 @@ export function EditorApp({ onExit }: EditorAppProps) {
     }
   }, [scene])
 
+  /** 切换工具 + 自动切到对应图层类型 */
   const switchTool = useCallback((toolType: ToolType) => {
+    const es = editorStateRef.current
+    if (es) {
+      const requiredType = TOOL_LAYER_TYPE[toolType]
+      if (requiredType && es.activeLayer?.type !== requiredType) {
+        const idx = es.layers.findIndex(l => l.type === requiredType)
+        if (idx >= 0) {
+          es.setActiveLayer(idx)
+        } else if (requiredType === 'tile') {
+          // 自动创建 tile 图层
+          es.addTileLayer('tile_1')
+          es.setActiveLayer(es.layers.length - 1)
+        } else if (requiredType === 'collision') {
+          es.addCollisionLayer('collision_1')
+          es.setActiveLayer(es.layers.length - 1)
+        } else if (requiredType === 'object') {
+          es.addObjectLayer('object_1')
+          es.setActiveLayer(es.layers.length - 1)
+        }
+      }
+    }
     setActiveTool(toolType)
     createTool(toolType)
-  }, [createTool])
+    refresh()
+  }, [createTool, refresh])
 
-  // 瓦片选择
+  /** 瓦片选择 → 自动切 tile 图层 + 笔刷 */
   const handleSelectTile = useCallback((tilesetId: string, tileIndex: number) => {
     const es = editorStateRef.current
     if (!es) return
     es.selectedTile = { tilesetId, tileIndex }
-    refresh()
-    // 自动切换到笔刷工具
-    if (activeTool !== 'brush' && activeTool !== 'eraser' && activeTool !== 'fill') {
-      switchTool('brush')
-    }
-  }, [activeTool, switchTool, refresh])
 
-  // 图层选择
-  const handleSelectLayer = useCallback((index: number) => {
-    if (!editorState) return
-    editorState.setActiveLayer(index)
+    // 确保选中 tile 图层
+    if (es.activeLayer?.type !== 'tile') {
+      const idx = es.layers.findIndex(l => l.type === 'tile')
+      if (idx >= 0) es.setActiveLayer(idx)
+    }
+
     refresh()
-  }, [editorState, refresh])
+    // 自动切换到瓦片绘制工具
+    const tileTools: ToolType[] = ['brush', 'eraser', 'fill', 'rect', 'line']
+    if (!tileTools.includes(activeTool)) {
+      setActiveTool('brush')
+      createTool('brush')
+    }
+  }, [activeTool, createTool, refresh])
+
+  /** 图层选择 → 自动切到对应工具 */
+  const handleSelectLayer = useCallback((index: number) => {
+    const es = editorStateRef.current
+    if (!es) return
+    es.setActiveLayer(index)
+    const layer = es.layers[index]
+    if (layer) {
+      const currentRequired = TOOL_LAYER_TYPE[activeTool]
+      // 当前工具不兼容该图层类型时，自动切到默认工具
+      if (currentRequired !== null && currentRequired !== layer.type) {
+        const defaultTool = LAYER_DEFAULT_TOOL[layer.type] ?? 'select'
+        setActiveTool(defaultTool)
+        createTool(defaultTool)
+      }
+    }
+    refresh()
+  }, [activeTool, createTool, refresh])
 
   // 初始化
   useEffect(() => {
@@ -311,7 +374,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
     document.addEventListener('mouseup', onMouseUp)
   }, [leftPanelWidth])
 
-  // 素材导入：从文件直接加载纹理，无需手动复制图片
+  // 素材导入：从文件直接加载纹理 + 自动创建 tile 图层
   const handleImportTileset = useCallback(async (tileset: TilesetDef, imageFile: File) => {
     const es = editorStateRef.current
     if (!es || !scene) return
@@ -319,11 +382,25 @@ export function EditorApp({ onExit }: EditorAppProps) {
     const newTilesets = new Map(scene.tilesets)
     newTilesets.set(tileset.id, loaded)
     es.addTileset(tileset)
+
+    // 自动创建 tile 图层（如果没有）
+    const hasTileLayer = es.layers.some(l => l.type === 'tile')
+    if (!hasTileLayer) {
+      es.addTileLayer('tile_1')
+    }
+    // 自动选中第一个 tile 图层
+    const tileIdx = es.layers.findIndex(l => l.type === 'tile')
+    if (tileIdx >= 0) es.setActiveLayer(tileIdx)
+
     const updatedData = es.toSceneData()
     const updatedScene: LoadedScene = { data: updatedData, tilesets: newTilesets }
     setScene(updatedScene)
+
+    // 自动切到笔刷
+    setActiveTool('brush')
+    createTool('brush')
     refresh()
-  }, [scene, refresh])
+  }, [scene, createTool, refresh])
 
   // 加载场景文件
   const handleLoad = useCallback(() => {
@@ -380,18 +457,21 @@ export function EditorApp({ onExit }: EditorAppProps) {
     URL.revokeObjectURL(url)
   }, [editorState])
 
-  const tools: { type: ToolType; icon: string; label: string; shortcut: string }[] = [
+  // 工具栏分组：通用 | 瓦片 | 碰撞/对象/区域
+  const toolGroups: { type: ToolType; icon: string; label: string; shortcut: string; sep?: boolean }[] = [
     { type: 'select', icon: '🖱️', label: '选择', shortcut: 'V' },
     { type: 'pan', icon: '✋', label: '平移', shortcut: 'H' },
-    { type: 'brush', icon: '🖌️', label: '笔刷', shortcut: 'B' },
+    { type: 'brush', icon: '🖌️', label: '笔刷', shortcut: 'B', sep: true },
     { type: 'eraser', icon: '🧹', label: '橡皮擦', shortcut: 'E' },
     { type: 'fill', icon: '🪣', label: '填充', shortcut: 'G' },
     { type: 'rect', icon: '⬜', label: '矩形', shortcut: 'R' },
     { type: 'line', icon: '📏', label: '直线', shortcut: 'L' },
-    { type: 'collision', icon: '🚧', label: '碰撞', shortcut: 'C' },
+    { type: 'collision', icon: '🚧', label: '碰撞', shortcut: 'C', sep: true },
     { type: 'object', icon: '📌', label: '对象', shortcut: 'O' },
     { type: 'zone', icon: '🏷️', label: '区域', shortcut: 'Z' },
   ]
+
+  const activeLayerType = editorState?.activeLayer?.type ?? null
 
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', background: '#1a1a2e' }}>
@@ -411,28 +491,37 @@ export function EditorApp({ onExit }: EditorAppProps) {
 
         <div style={dividerStyle} />
 
-        {tools.map(t => (
-          <button
-            key={t.type}
-            onClick={() => switchTool(t.type)}
-            style={{
-              background: activeTool === t.type ? '#2a3a5a' : 'transparent',
-              border: activeTool === t.type ? '1px solid #4a6a9a' : '1px solid transparent',
-              color: activeTool === t.type ? '#8ab4f8' : '#6a6a8a',
-              padding: '4px 8px',
-              cursor: 'pointer',
-              fontFamily: 'monospace',
-              fontSize: 11,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 3,
-            }}
-            title={`${t.label} (${t.shortcut})`}
-          >
-            <span>{t.icon}</span>
-            <span>{t.label}</span>
-          </button>
-        ))}
+        {toolGroups.map(t => {
+          const requiredLayer = TOOL_LAYER_TYPE[t.type]
+          const isActive = activeTool === t.type
+          // 工具是否匹配当前图层（null = 通用工具，始终兼容）
+          const isCompatible = requiredLayer === null || requiredLayer === activeLayerType
+          return (
+            <span key={t.type} style={{ display: 'contents' }}>
+              {t.sep && <div style={dividerStyle} />}
+              <button
+                onClick={() => switchTool(t.type)}
+                style={{
+                  background: isActive ? '#2a3a5a' : 'transparent',
+                  border: isActive ? '1px solid #4a6a9a' : '1px solid transparent',
+                  color: isActive ? '#8ab4f8' : isCompatible ? '#6a6a8a' : '#3a3a4a',
+                  padding: '4px 8px',
+                  cursor: 'pointer',
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 3,
+                  opacity: isCompatible || isActive ? 1 : 0.5,
+                }}
+                title={`${t.label} (${t.shortcut})${!isCompatible ? ' — 需要' + (requiredLayer === 'tile' ? '瓦片' : requiredLayer === 'collision' ? '碰撞' : '对象') + '图层' : ''}`}
+              >
+                <span>{t.icon}</span>
+                <span>{t.label}</span>
+              </button>
+            </span>
+          )
+        })}
 
         <div style={dividerStyle} />
 
@@ -473,6 +562,15 @@ export function EditorApp({ onExit }: EditorAppProps) {
                 activeIndex={editorState.activeLayerIndex}
                 onSelectLayer={handleSelectLayer}
                 onRefresh={refresh}
+                onLayerAdded={(idx) => {
+                  // 新建图层后自动切到对应工具
+                  const layer = editorState.layers[idx]
+                  if (layer) {
+                    const defaultTool = LAYER_DEFAULT_TOOL[layer.type] ?? 'select'
+                    setActiveTool(defaultTool)
+                    createTool(defaultTool)
+                  }
+                }}
               />
             )}
           </div>

@@ -9,6 +9,7 @@ interface LayerPanelProps {
   readonly activeIndex: number
   readonly onSelectLayer: (index: number) => void
   readonly onRefresh: () => void
+  readonly onLayerAdded?: (index: number) => void
 }
 
 const LAYER_ICONS: Record<string, string> = {
@@ -17,7 +18,7 @@ const LAYER_ICONS: Record<string, string> = {
   collision: '🚧',
 }
 
-export function LayerPanel({ state, activeIndex, onSelectLayer, onRefresh }: LayerPanelProps) {
+export function LayerPanel({ state, activeIndex, onSelectLayer, onRefresh, onLayerAdded }: LayerPanelProps) {
   const layers = state.layers
 
   const handleToggleVisible = (idx: number) => {
@@ -50,6 +51,10 @@ export function LayerPanel({ state, activeIndex, onSelectLayer, onRefresh }: Lay
     if (type === 'tile') state.addTileLayer(name)
     else if (type === 'object') state.addObjectLayer(name)
     else state.addCollisionLayer(name)
+    const newIdx = state.layers.length - 1
+    // 自动选中新图层并通知
+    onSelectLayer(newIdx)
+    onLayerAdded?.(newIdx)
     onRefresh()
   }
 
