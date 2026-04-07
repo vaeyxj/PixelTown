@@ -13,6 +13,8 @@ import { TileBrushTool, TileEraserTool, TileFillTool } from '../../game/editor/t
 import { CollisionBrushTool } from '../../game/editor/tools/CollisionBrushTool'
 import { ObjectPlaceTool } from '../../game/editor/tools/ObjectPlaceTool'
 import { ZoneTool } from '../../game/editor/tools/ZoneTool'
+import { RectBrushTool } from '../../game/editor/tools/RectBrushTool'
+import { LineTool } from '../../game/editor/tools/LineTool'
 import { EditorHistory } from '../../game/editor/history'
 import type { SceneObject, TilesetDef, ZoneData } from '../../game/editor/types'
 import { LayerPanel } from './LayerPanel'
@@ -22,7 +24,7 @@ import { AssetBrowser } from './AssetBrowser'
 import { ZonePanel } from './ZonePanel'
 import { AnimationEditor } from './AnimationEditor'
 
-type ToolType = 'select' | 'pan' | 'brush' | 'eraser' | 'fill' | 'collision' | 'object' | 'zone'
+type ToolType = 'select' | 'pan' | 'brush' | 'eraser' | 'fill' | 'rect' | 'line' | 'collision' | 'object' | 'zone'
 
 interface EditorAppProps {
   readonly onExit: () => void
@@ -79,6 +81,12 @@ export function EditorApp({ onExit }: EditorAppProps) {
         break
       case 'fill':
         vp.setTool(new TileFillTool(es))
+        break
+      case 'rect':
+        if (sc) vp.setTool(new RectBrushTool(es, sc))
+        break
+      case 'line':
+        if (sc) vp.setTool(new LineTool(es, sc))
         break
       case 'collision':
         vp.setTool(new CollisionBrushTool(es))
@@ -267,6 +275,8 @@ export function EditorApp({ onExit }: EditorAppProps) {
         if (e.key === 'b' || e.key === 'B') switchTool('brush')
         if (e.key === 'e' || e.key === 'E') switchTool('eraser')
         if (e.key === 'g' || e.key === 'G') switchTool('fill')
+        if (e.key === 'r' || e.key === 'R') switchTool('rect')
+        if (e.key === 'l' || e.key === 'L') switchTool('line')
         if (e.key === 'c' || e.key === 'C') switchTool('collision')
         if (e.key === 'o' || e.key === 'O') switchTool('object')
         if (e.key === 'z' || e.key === 'Z') switchTool('zone')
@@ -376,6 +386,8 @@ export function EditorApp({ onExit }: EditorAppProps) {
     { type: 'brush', icon: '🖌️', label: '笔刷', shortcut: 'B' },
     { type: 'eraser', icon: '🧹', label: '橡皮擦', shortcut: 'E' },
     { type: 'fill', icon: '🪣', label: '填充', shortcut: 'G' },
+    { type: 'rect', icon: '⬜', label: '矩形', shortcut: 'R' },
+    { type: 'line', icon: '📏', label: '直线', shortcut: 'L' },
     { type: 'collision', icon: '🚧', label: '碰撞', shortcut: 'C' },
     { type: 'object', icon: '📌', label: '对象', shortcut: 'O' },
     { type: 'zone', icon: '🏷️', label: '区域', shortcut: 'Z' },
@@ -538,7 +550,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
           }}>
             <span>空格+拖拽: 平移</span>
             <span>滚轮: 缩放</span>
-            <span>V:选择 H:平移 B:笔刷 E:橡皮擦 G:填充 C:碰撞 O:对象 Z:区域</span>
+            <span>V:选择 H:平移 B:笔刷 E:橡皮擦 G:填充 R:矩形 L:直线 C:碰撞 O:对象 Z:区域</span>
             {editorState && <span>图层: {editorState.activeLayer?.name ?? '-'}</span>}
             {editorState?.selectedTile && <span>瓦片: {editorState.selectedTile.tilesetId}#{editorState.selectedTile.tileIndex}</span>}
           </div>

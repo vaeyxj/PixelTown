@@ -164,6 +164,24 @@ export class EditorState {
     this.emit({ type: 'layer-changed', layerIndex: this.activeLayerIndex })
   }
 
+  /** 批量绘制瓦片（矩形/直线等，只触发一次事件） */
+  paintTiles(coords: ReadonlyArray<{ x: number; y: number }>): void {
+    const layer = this.activeLayer
+    if (!layer || layer.type !== 'tile') return
+    if (!this.selectedTile) return
+
+    const { tilesetId, tileIndex } = this.selectedTile
+    const tsIdx = this.tilesets.findIndex(t => t.id === tilesetId)
+    if (tsIdx < 0) return
+
+    const value = encodeTile(tsIdx, tileIndex)
+    for (const { x, y } of coords) {
+      if (x < 0 || x >= this.width || y < 0 || y >= this.height) continue
+      layer.data[y * this.width + x] = value
+    }
+    this.emit({ type: 'layer-changed', layerIndex: this.activeLayerIndex })
+  }
+
   /** 擦除瓦片 */
   eraseTile(tileX: number, tileY: number): void {
     const layer = this.activeLayer
