@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react'
 import { PixelCanvas } from './components/PixelCanvas'
 import { LoginScreen } from './components/LoginScreen'
 import { LoadingScreen } from './components/LoadingScreen'
@@ -8,8 +8,11 @@ import { CharacterPanel } from './components/CharacterPanel'
 import { EmployeeGrid } from './components/EmployeeGrid'
 import { StatsDashboard } from './components/StatsDashboard'
 import { audioManager } from './game/audioManager'
+import type { MapZone } from './game/editor/types'
 import type { CharacterState, EmployeeStatus } from './game/simulation'
-import type { GameCallbacks } from './game/engine'
+import type { GameCallbacks, GameEngine } from './game/engine'
+
+const EditorApp = lazy(() => import('./components/editor/EditorApp').then(m => ({ default: m.EditorApp })))
 
 type ActivePanel = 'grid' | 'dashboard' | null
 
@@ -40,6 +43,7 @@ function useToast() {
 }
 
 function App() {
+  const [editorMode, setEditorMode] = useState(() => window.location.hash === '#editor')
   const [showLogin, setShowLogin] = useState(true)
   const [started, setStarted] = useState(false)
   const [hudVisible, setHudVisible] = useState(false)
@@ -52,6 +56,13 @@ function App() {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => { /* ignore */ })
     }
+  }, [])
+
+  // 监听 hash 变化切换编辑器模式
+  useEffect(() => {
+    const onHash = () => setEditorMode(window.location.hash === '#editor')
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
   // Simulate loading progress after entering world
@@ -82,7 +93,9 @@ function App() {
   const { toasts, show: showToast } = useToast()
 
   const lastMiniMapUpdate = useRef(0)
-  const engineRef = useRef<{ setMobileInput: (dx: number, dy: number) => void } | null>(null)
+  const [sceneZones, setSceneZones] = useState<readonly MapZone[]>([])
+  const [worldSize, setWorldSize] = useState({ w: 1536, h: 896 })
+  const engineRef = useRef<GameEngine | null>(null)
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 
   const callbacks: GameCallbacks = {
@@ -154,12 +167,25 @@ function App() {
     { top: '18%', size: 50, delay: 33, dur: 48 },
   ]
 
+  // 编辑器模式
+  if (editorMode) {
+    return (
+      <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: '#1a1a2e', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6a6a8a', fontFamily: 'monospace' }}>加载编辑器...</div>}>
+        <EditorApp onExit={() => { window.location.hash = '' }} />
+      </Suspense>
+    )
+  }
+
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#060d18' }}>
       <PixelCanvas
         started={started}
         callbacks={callbacks}
-        onEngineReady={engine => { engineRef.current = engine }}
+        onEngineReady={engine => {
+          engineRef.current = engine
+          setSceneZones(engine.zones)
+          setWorldSize({ w: engine.worldW, h: engine.worldH })
+        }}
       />
 
       {/* 云朵粒子（视差背景叠加） */}
@@ -186,7 +212,7 @@ function App() {
       {hudVisible && (
         <>
           <StatsPanel stats={stats} timeStr={timeStr} onlineCount={onlineCount} />
-          <MiniMap characters={miniMapChars} cameraRect={cameraRect} />
+          <MiniMap characters={miniMapChars} cameraRect={cameraRect} worldW={worldSize.w} worldH={worldSize.h} zones={sceneZones} />
           <BottomToolbar
             onOpenGrid={() => togglePanel('grid')}
             onOpenDashboard={() => togglePanel('dashboard')}

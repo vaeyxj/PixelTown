@@ -1,0 +1,67 @@
+{
+  "width": 96,
+  "height": 56,
+  "tileSize": 16,
+  "tilesets": [],
+  "layers": [
+    {
+      "type": "collision",
+      "name": "collision",
+      "visible": false,
+      "data": []
+    }
+  ],
+  "zones": [
+    { "id": "storage", "name": "库房", "type": "storage", "x": 1, "y": 2, "width": 6, "height": 6, "properties": {} },
+    { "id": "customer_service", "name": "客服部", "type": "service", "x": 8, "y": 2, "width": 7, "height": 6, "properties": {} },
+    { "id": "restroom_top_left", "name": "🚻", "type": "restroom", "x": 16, "y": 5, "width": 3, "height": 3, "properties": {} },
+    { "id": "exit_c", "name": "←通往C区", "type": "exit", "x": 1, "y": 10, "width": 6, "height": 2, "properties": {} },
+
+    { "id": "ws_ops_brand", "name": "运营/品牌/教研", "type": "workstation", "x": 20, "y": 2, "width": 14, "height": 8, "properties": { "seats": 58, "group": "14排", "label": "运营·品牌·教研 58席" } },
+    { "id": "ws_14_mid", "name": "14排中段", "type": "workstation", "x": 35, "y": 2, "width": 12, "height": 8, "properties": { "seats": 29, "group": "14排", "label": "小学产研 29席" } },
+    { "id": "ws_war", "name": "WAR", "type": "workstation", "x": 48, "y": 2, "width": 8, "height": 8, "properties": { "seats": 16, "group": "14排", "label": "WAR 16席" } },
+    { "id": "ws_gp", "name": "GP", "type": "workstation", "x": 57, "y": 2, "width": 12, "height": 8, "properties": { "seats": 48, "group": "14排", "label": "GP 48席" } },
+
+    { "id": "restroom_top_right", "name": "🚻 卫生间", "type": "restroom", "x": 70, "y": 2, "width": 6, "height": 8, "properties": {} },
+
+    { "id": "mr_qidian", "name": "奇点", "type": "meeting_room", "x": 2, "y": 14, "width": 5, "height": 3, "properties": {} },
+    { "id": "mr_fanshi", "name": "范式", "type": "meeting_room", "x": 2, "y": 18, "width": 5, "height": 3, "properties": {} },
+    { "id": "mr_chaoqun", "name": "超群", "type": "meeting_room", "x": 2, "y": 22, "width": 5, "height": 3, "properties": {} },
+    { "id": "mr_xianzhi", "name": "先知", "type": "meeting_room", "x": 2, "y": 26, "width": 5, "height": 3, "properties": {} },
+
+    { "id": "ws_4row", "name": "4排工位", "type": "workstation", "x": 9, "y": 14, "width": 12, "height": 15, "properties": { "seats": 54, "group": "4排", "label": "4排 54席" } },
+
+    { "id": "mr_liangdu", "name": "梁度", "type": "meeting_room", "x": 23, "y": 14, "width": 6, "height": 3, "properties": {} },
+    { "id": "mr_juzhen", "name": "矩阵", "type": "meeting_room", "x": 23, "y": 17.5, "width": 6, "height": 3, "properties": {} },
+    { "id": "mr_moxing", "name": "模型", "type": "meeting_room", "x": 30, "y": 14, "width": 6, "height": 3, "properties": {} },
+    { "id": "mr_ai", "name": "AI°", "type": "meeting_room", "x": 30, "y": 17.5, "width": 6, "height": 5, "properties": {} },
+    { "id": "mr_suanfa", "name": "算法", "type": "meeting_room", "x": 23, "y": 21, "width": 6, "height": 3, "properties": {} },
+    { "id": "mr_xiangliang", "name": "向量", "type": "meeting_room", "x": 23, "y": 24.5, "width": 6, "height": 3, "properties": {} },
+    { "id": "mr_shuju", "name": "数据", "type": "meeting_room", "x": 30, "y": 24.5, "width": 6, "height": 3, "properties": {} },
+
+    { "id": "ws_5row", "name": "5排工位", "type": "workstation", "x": 46, "y": 14, "width": 14, "height": 15, "properties": { "seats": 58, "group": "5排", "label": "5排 58席" } },
+
+    { "id": "mr_turing", "name": "图灵", "type": "meeting_room", "x": 62, "y": 14, "width": 5, "height": 3, "properties": {} },
+    { "id": "mr_euler", "name": "欧拉", "type": "meeting_room", "x": 68, "y": 14, "width": 5, "height": 3, "properties": {} },
+    { "id": "mr_taylor", "name": "泰勒", "type": "meeting_room", "x": 74, "y": 14, "width": 5, "height": 3, "properties": {} },
+    { "id": "mr_gauss", "name": "高斯", "type": "meeting_room", "x": 62, "y": 18, "width": 5, "height": 4, "properties": {} },
+    { "id": "mr_laozi", "name": "老子", "type": "meeting_room", "x": 68, "y": 18, "width": 5, "height": 4, "properties": {} },
+    { "id": "mr_mozi", "name": "墨子", "type": "meeting_room", "x": 74, "y": 18, "width": 5, "height": 4, "properties": {} },
+    { "id": "mr_zhuangzi", "name": "庄子", "type": "meeting_room", "x": 80, "y": 18, "width": 5, "height": 4, "properties": {} },
+    { "id": "mr_newton", "name": "牛顿", "type": "meeting_room", "x": 62, "y": 23, "width": 5, "height": 4, "properties": {} },
+    { "id": "mr_xunzi", "name": "荀子", "type": "meeting_room", "x": 80, "y": 14, "width": 5, "height": 3, "properties": {} },
+
+    { "id": "ws_ai_ops", "name": "AI中台+运维", "type": "workstation", "x": 9, "y": 32, "width": 12, "height": 10, "properties": { "seats": 49, "label": "AI中台+运维 49席" } },
+    { "id": "ws_shared", "name": "共享工位", "type": "shared_desk", "x": 22, "y": 32, "width": 6, "height": 4, "properties": { "seats": 4, "label": "共享工位 4席" } },
+    { "id": "ws_gmt", "name": "GMT+教学质量", "type": "workstation", "x": 9, "y": 43, "width": 12, "height": 8, "properties": { "seats": 28, "label": "GMT+教学质量 28席" } },
+    { "id": "ws_15row", "name": "15排工位", "type": "workstation", "x": 29, "y": 32, "width": 28, "height": 19, "properties": { "seats": 154, "group": "15排", "label": "15排 154席" } },
+
+    { "id": "mr_zengzhang", "name": "增长", "type": "meeting_room", "x": 59, "y": 32, "width": 5, "height": 4, "properties": {} },
+    { "id": "mr_zhuanhua", "name": "转化", "type": "meeting_room", "x": 65, "y": 32, "width": 5, "height": 4, "properties": {} },
+    { "id": "mr_kongzi", "name": "孔子", "type": "meeting_room", "x": 71, "y": 32, "width": 5, "height": 4, "properties": {} },
+    { "id": "mr_mengzi", "name": "孟子", "type": "meeting_room", "x": 77, "y": 32, "width": 5, "height": 4, "properties": {} },
+    { "id": "mr_love", "name": "爱°", "type": "meeting_room", "x": 83, "y": 40, "width": 5, "height": 4, "properties": {} },
+
+    { "id": "gym", "name": "💪 健身房", "type": "gym", "x": 65, "y": 38, "width": 14, "height": 10, "properties": { "label": "健身房 GYM" } }
+  ]
+}

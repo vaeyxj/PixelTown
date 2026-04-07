@@ -5,7 +5,7 @@
  * - 灯光渲染为暖色矩形叠加在暗色遮罩之上
  */
 import { Container, Graphics } from 'pixi.js'
-import { MAP_ZONES, TILE_SIZE, type MapZone } from './mapData'
+import type { MapZone } from './editor/types'
 import { getDarknessLevel, type CharacterState } from './simulation'
 
 interface RoomLight {
@@ -24,16 +24,18 @@ export interface LightingSystem {
 
 const LIGHTABLE_TYPES = new Set(['meeting_room', 'gym', 'service', 'restroom', 'storage'])
 
-function isInZone(ch: CharacterState, zone: MapZone): boolean {
-  const zx = zone.x * TILE_SIZE
-  const zy = zone.y * TILE_SIZE
-  const zw = zone.width * TILE_SIZE
-  const zh = zone.height * TILE_SIZE
+function isInZone(ch: CharacterState, zone: MapZone, tileSize: number): boolean {
+  const zx = zone.x * tileSize
+  const zy = zone.y * tileSize
+  const zw = zone.width * tileSize
+  const zh = zone.height * tileSize
   return ch.x >= zx && ch.x < zx + zw && ch.y >= zy && ch.y < zy + zh
 }
 
 export function createLightingSystem(
   worldContainer: Container,
+  zones: readonly MapZone[],
+  tileSize: number,
 ): LightingSystem {
   const container = new Container()
   container.label = 'lighting'
@@ -41,7 +43,7 @@ export function createLightingSystem(
 
   const roomLights: Map<string, RoomLight> = new Map()
 
-  for (const zone of MAP_ZONES) {
+  for (const zone of zones) {
     if (!LIGHTABLE_TYPES.has(zone.type)) continue
 
     // 灯光矩形
@@ -50,8 +52,8 @@ export function createLightingSystem(
 
     // 灯泡图标（右上角）
     const iconGraphic = new Graphics()
-    iconGraphic.x = (zone.x + zone.width) * TILE_SIZE - 12
-    iconGraphic.y = zone.y * TILE_SIZE + 4
+    iconGraphic.x = (zone.x + zone.width) * tileSize - 12
+    iconGraphic.y = zone.y * tileSize + 4
     iconGraphic.eventMode = 'static'
     iconGraphic.cursor = 'pointer'
     iconGraphic.hitArea = { contains: (x: number, y: number) => x >= -4 && x <= 12 && y >= -4 && y <= 12 }
@@ -99,16 +101,16 @@ export function createLightingSystem(
 
         // 自动灯光：有人且天黑时自动开灯（除非手动关闭）
         if (!light.manualOverride) {
-          const hasOccupants = characters.some(c => c.x > 0 && isInZone(c, zone))
+          const hasOccupants = characters.some(c => c.x > 0 && isInZone(c, zone, tileSize))
           light.lit = hasOccupants && darkness > 0.05
         }
 
         graphic.clear()
         if (light.lit && darkness > 0) {
-          const px = zone.x * TILE_SIZE
-          const py = zone.y * TILE_SIZE
-          const pw = zone.width * TILE_SIZE
-          const ph = zone.height * TILE_SIZE
+          const px = zone.x * tileSize
+          const py = zone.y * tileSize
+          const pw = zone.width * tileSize
+          const ph = zone.height * tileSize
 
           // 暖色灯光效果 — 抵消暗色遮罩
           graphic.rect(px + 2, py + 2, pw - 4, ph - 4)

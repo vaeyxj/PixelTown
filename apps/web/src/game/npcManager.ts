@@ -16,6 +16,7 @@ import {
   type EmployeeStatus,
 } from './simulation'
 import type { Application } from 'pixi.js'
+import type { MapZone } from './editor/types'
 import type { ParticleSystem } from './particleSystem'
 
 export interface CharEntry {
@@ -51,6 +52,8 @@ export function createNpcManager(
   characters: CharacterState[],
   onCharacterClick: (char: CharacterState) => void,
   particleSystem: ParticleSystem | null = null,
+  zones: readonly MapZone[] = [],
+  tileSize: number = 16,
 ): NpcManager {
   const entries: CharEntry[] = characters.map(ch => {
     const appearance = generateAppearance(ch.employee.id)
@@ -100,7 +103,7 @@ export function createNpcManager(
     entries,
 
     update(dt, hour, minute, emojiAnimTime, talkingIds?, viewport?) {
-      updateCharacters(characters, dt, hour, minute)
+      updateCharacters(characters, dt, hour, minute, zones, tileSize)
 
       const margin = 64 // px margin outside viewport
       for (const entry of entries) {

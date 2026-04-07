@@ -11,7 +11,7 @@
  * 偏差：每人有随机的作息偏移（早到/晚走/跳过午休等）
  */
 
-import { TILE_SIZE, MAP_ZONES, type MapZone } from './mapData'
+import type { MapZone } from './editor/types'
 import type { Direction } from './characterSprite'
 
 export type EmployeeStatus = 'working' | 'meeting' | 'lunch' | 'dinner' | 'walking' | 'idle' | 'away' | 'exercising'
@@ -77,11 +77,6 @@ const DEPARTMENTS: ReadonlyArray<{ name: string; zoneIds: readonly string[] }> =
   { name: '测试', zoneIds: ['ws_4row'] },
 ]
 
-// 会议室 ID 列表
-const MEETING_ROOM_IDS = MAP_ZONES
-  .filter(z => z.type === 'meeting_room')
-  .map(z => z.id)
-
 function seededRandom(seed: number): () => number {
   let s = seed
   return () => {
@@ -95,11 +90,11 @@ function pickRandom<T>(arr: readonly T[], rng: () => number): T {
 }
 
 /** 在区域内生成一个工位位置 (像素坐标) */
-function deskPositionInZone(zone: MapZone, index: number, _total: number): { x: number; y: number } {
-  const px = zone.x * TILE_SIZE
-  const py = zone.y * TILE_SIZE
-  const pw = zone.width * TILE_SIZE
-  const ph = zone.height * TILE_SIZE
+function deskPositionInZone(zone: MapZone, index: number, _total: number, tileSize: number): { x: number; y: number } {
+  const px = zone.x * tileSize
+  const py = zone.y * tileSize
+  const pw = zone.width * tileSize
+  const ph = zone.height * tileSize
   const cols = Math.max(1, Math.floor(pw / 28))
   const row = Math.floor(index / cols)
   const col = index % cols
@@ -110,20 +105,24 @@ function deskPositionInZone(zone: MapZone, index: number, _total: number): { x: 
 }
 
 /** 生成 N 个模拟员工 */
-export function generateEmployees(count: number): readonly Employee[] {
+export function generateEmployees(count: number, zones: readonly MapZone[], tileSize: number): readonly Employee[] {
   const rng = seededRandom(42)
   const employees: Employee[] = []
   const deptCounters: Record<string, number> = {}
 
+  const meetingRoomIds = zones
+    .filter(z => z.type === 'meeting_room')
+    .map(z => z.id)
+
   for (let i = 0; i < count; i++) {
     const dept = DEPARTMENTS[i % DEPARTMENTS.length]
     const zoneId = pickRandom(dept.zoneIds, rng)
-    const zone = MAP_ZONES.find(z => z.id === zoneId)!
+    const zone = zones.find(z => z.id === zoneId)!
 
     if (!deptCounters[zoneId]) deptCounters[zoneId] = 0
     const deskIdx = deptCounters[zoneId]++
     const totalInZone = zone.seats ?? 20
-    const deskPos = deskPositionInZone(zone, deskIdx, totalInZone)
+    const deskPos = deskPositionInZone(zone, deskIdx, totalInZone, tileSize)
 
     const surname = pickRandom(SURNAMES, rng)
     const givenName = pickRandom(GIVEN_NAMES, rng)
@@ -139,7 +138,7 @@ export function generateEmployees(count: number): readonly Employee[] {
         startHour: hour,
         startMin: rng() < 0.5 ? 0 : 30,
         durationMin: 30 + Math.floor(rng() * 3) * 15,
-        roomId: pickRandom(MEETING_ROOM_IDS, rng),
+        roomId: pickRandom(meetingRoomIds, rng),
       })
     }
 
@@ -162,26 +161,26 @@ export function generateEmployees(count: number): readonly Employee[] {
 }
 
 /** 获取入口位置 (像素坐标) */
-export function getEntrancePosition(): { x: number; y: number } {
-  const exitZone = MAP_ZONES.find(z => z.id === 'exit_c')
+export function getEntrancePosition(zones: readonly MapZone[], tileSize: number): { x: number; y: number } {
+  const exitZone = zones.find(z => z.id === 'exit_c')
   if (exitZone) {
     return {
-      x: exitZone.x * TILE_SIZE + exitZone.width * TILE_SIZE / 2,
-      y: exitZone.y * TILE_SIZE + exitZone.height * TILE_SIZE / 2,
+      x: exitZone.x * tileSize + exitZone.width * tileSize / 2,
+      y: exitZone.y * tileSize + exitZone.height * tileSize / 2,
     }
   }
   return { x: 80, y: 180 }
 }
 
 /** 生成健身房内的随机位置 */
-function gymPosition(empId: number): { status: EmployeeStatus; targetX: number; targetY: number } {
-  const gym = MAP_ZONES.find(z => z.id === 'gym')
+function gymPosition(empId: number, zones: readonly MapZone[], tileSize: number): { status: EmployeeStatus; targetX: number; targetY: number } {
+  const gym = zones.find(z => z.id === 'gym')
   if (!gym) return { status: 'idle', targetX: 0, targetY: 0 }
   const rng = seededRandom(empId * 777)
   return {
     status: 'exercising',
-    targetX: gym.x * TILE_SIZE + 12 + rng() * (gym.width * TILE_SIZE - 28),
-    targetY: gym.y * TILE_SIZE + 12 + rng() * (gym.height * TILE_SIZE - 28),
+    targetX: gym.x * tileSize + 12 + rng() * (gym.width * tileSize - 28),
+    targetY: gym.y * tileSize + 12 + rng() * (gym.height * tileSize - 28),
   }
 }
 
@@ -190,6 +189,8 @@ export function computeEmployeeState(
   emp: Employee,
   hour: number,
   minute: number,
+  zones: readonly MapZone[],
+  tileSize: number,
 ): { status: EmployeeStatus; targetX: number; targetY: number } {
   const timeMin = hour * 60 + minute
   const arriveTime = 10 * 60 + emp.arriveOffset
@@ -209,14 +210,14 @@ export function computeEmployeeState(
     const mStart = meeting.startHour * 60 + meeting.startMin
     const mEnd = mStart + meeting.durationMin
     if (timeMin >= mStart && timeMin < mEnd) {
-      const room = MAP_ZONES.find(z => z.id === meeting.roomId)
+      const room = zones.find(z => z.id === meeting.roomId)
       if (room) {
         // 在会议室中央区域的随机位置
         const rng = seededRandom(emp.id * 1000 + meeting.startHour)
         return {
           status: 'meeting',
-          targetX: room.x * TILE_SIZE + 10 + rng() * (room.width * TILE_SIZE - 24),
-          targetY: room.y * TILE_SIZE + 10 + rng() * (room.height * TILE_SIZE - 24),
+          targetX: room.x * tileSize + 10 + rng() * (room.width * tileSize - 24),
+          targetY: room.y * tileSize + 10 + rng() * (room.height * tileSize - 24),
         }
       }
     }
@@ -227,14 +228,11 @@ export function computeEmployeeState(
     const rng = seededRandom(emp.id + 999)
     const roll = rng()
     if (roll < 0.15) {
-      // 去健身房
-      return gymPosition(emp.id)
+      return gymPosition(emp.id, zones, tileSize)
     }
     if (roll < 0.55) {
-      // 留在工位休息
       return { status: 'lunch', targetX: emp.deskOffsetX, targetY: emp.deskOffsetY }
     }
-    // 外出 (走到出口附近或走廊)
     return { status: 'lunch', targetX: -100, targetY: -100 }
   }
 
@@ -243,8 +241,7 @@ export function computeEmployeeState(
     const rng = seededRandom(emp.id + 888)
     const roll = rng()
     if (roll < 0.12) {
-      // 去健身房
-      return gymPosition(emp.id)
+      return gymPosition(emp.id, zones, tileSize)
     }
     if (roll < 0.42) {
       return { status: 'dinner', targetX: emp.deskOffsetX, targetY: emp.deskOffsetY }
@@ -257,9 +254,9 @@ export function computeEmployeeState(
 }
 
 /** 初始化所有角色状态 */
-export function initCharacterStates(employees: readonly Employee[], hour: number, minute: number): CharacterState[] {
+export function initCharacterStates(employees: readonly Employee[], hour: number, minute: number, zones: readonly MapZone[], tileSize: number): CharacterState[] {
   return employees.map(emp => {
-    const { status, targetX, targetY } = computeEmployeeState(emp, hour, minute)
+    const { status, targetX, targetY } = computeEmployeeState(emp, hour, minute, zones, tileSize)
     const isPresent = targetX >= 0
     return {
       x: isPresent ? targetX : -200,
@@ -277,12 +274,12 @@ export function initCharacterStates(employees: readonly Employee[], hour: number
 }
 
 /** 每帧更新所有角色：移向目标位置 */
-export function updateCharacters(chars: CharacterState[], dt: number, hour: number, minute: number): void {
+export function updateCharacters(chars: CharacterState[], dt: number, hour: number, minute: number, zones: readonly MapZone[], tileSize: number): void {
   const speed = 40 // 像素/秒
 
   for (const ch of chars) {
     // 每隔一段时间重新计算状态
-    const { status, targetX, targetY } = computeEmployeeState(ch.employee, hour, minute)
+    const { status, targetX, targetY } = computeEmployeeState(ch.employee, hour, minute, zones, tileSize)
     ch.status = status
     ch.targetX = targetX
     ch.targetY = targetY

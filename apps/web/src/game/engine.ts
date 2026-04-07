@@ -2,8 +2,11 @@
  * 游戏主引擎 — 组装并启动各子系统
  */
 import { Application, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js'
-import { MAP_WIDTH, MAP_HEIGHT, TILE_SIZE } from './mapData'
-import { createOfficeMap } from './mapRenderer'
+import type { MapZone } from './editor/types'
+import { loadScene } from './editor/sceneLoader'
+import { renderScene } from './editor/sceneRenderer'
+import { extractCollisionGrid, tryMove } from './editor/collisionAdapter'
+import { extractZones } from './editor/zoneAdapter'
 import { generateCharacterFrames, generateAppearance, CHAR_H } from './characterSprite'
 import {
   generateEmployees,
@@ -20,7 +23,6 @@ import { createBubbleSystem } from './bubbleSystem'
 import { createParticleSystem } from './particleSystem'
 import { applyParallax, createBackgroundLayer, createForegroundLayer } from './parallax'
 import { createDayNightSystem } from './dayNightSystem'
-import { createCollisionGrid, tryMove } from './collisionMap'
 import { createLightingSystem } from './lightingSystem'
 import { createDoorSystem } from './doorSystem'
 
@@ -35,13 +37,25 @@ export interface GameEngine {
   destroy: () => void
   startEntryAnimation: () => void
   setMobileInput: (dx: number, dy: number) => void
+  /** 场景元数据，加载完成后可用 */
+  readonly zones: readonly MapZone[]
+  readonly worldW: number
+  readonly worldH: number
 }
 
 const PLAYER_SPEED = 100
 
-export function createGameEngine(app: Application, callbacks: GameCallbacks): GameEngine {
-  const worldW = MAP_WIDTH * TILE_SIZE
-  const worldH = MAP_HEIGHT * TILE_SIZE
+export async function createGameEngine(app: Application, callbacks: GameCallbacks): Promise<GameEngine> {
+  // 加载场景数据
+  const scene = await loadScene('/maps/office.scene.json')
+  const { data } = scene
+  const tileSize = data.tileSize
+  const worldW = data.width * tileSize
+  const worldH = data.height * tileSize
+
+  // 从场景数据提取 zones 和碰撞网格
+  const zones = extractZones(data.zones)
+  const collisionGrid = extractCollisionGrid(data)
 
   const bgLayer = createBackgroundLayer(app)
   app.stage.addChild(bgLayer)
@@ -53,7 +67,8 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
   const fgLayer = createForegroundLayer(worldW, worldH)
   app.stage.addChild(fgLayer)
 
-  const { destroy: destroyMap } = createOfficeMap(app, worldContainer)
+  // 渲染场景（替代 createOfficeMap）
+  const { destroy: destroyScene } = renderScene(app, worldContainer, scene)
 
   const shadowLayer = Object.assign(new Container(), { label: 'shadows' })
   worldContainer.addChild(shadowLayer)
@@ -72,19 +87,19 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
   const particleLayer = new Container()
   worldContainer.addChild(particleLayer)
 
-  const employees = generateEmployees(60)
+  const employees = generateEmployees(60, zones, tileSize)
   const clock = new SimClock()
   const { hour, minute } = clock.getTime()
-  const characters = initCharacterStates(employees, hour, minute)
+  const characters = initCharacterStates(employees, hour, minute, zones, tileSize)
 
   const particleSystem = createParticleSystem(particleLayer)
   const dayNightSystem = createDayNightSystem(worldContainer, worldW, worldH, particleSystem)
-  const doorSystem = createDoorSystem(worldContainer)
-  const lightingSystem = createLightingSystem(worldContainer)
-  const npcManager = createNpcManager(app, characterLayer, shadowLayer, emojiLayer, nameTagLayer, characters, callbacks.onCharacterClick, particleSystem)
+  const doorSystem = createDoorSystem(worldContainer, zones, tileSize)
+  const lightingSystem = createLightingSystem(worldContainer, zones, tileSize)
+  const npcManager = createNpcManager(app, characterLayer, shadowLayer, emojiLayer, nameTagLayer, characters, callbacks.onCharacterClick, particleSystem, zones, tileSize)
 
   const playerFrames = generateCharacterFrames(app, { ...generateAppearance(9999), shirtColor: 0xe84040 })
-  const entrance = getEntrancePosition()
+  const entrance = getEntrancePosition(zones, tileSize)
   const playerState: CharacterState = {
     x: entrance.x, y: entrance.y,
     targetX: entrance.x, targetY: entrance.y,
@@ -119,8 +134,6 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
   playerNameTag.anchor.set(0.5, 1)
   nameTagLayer.addChild(playerNameTag)
 
-  const collisionGrid = createCollisionGrid()
-
   const parallaxLayers = [{ container: bgLayer, scrollFactor: 0.3 }, { container: fgLayer, scrollFactor: 1.05 }]
   const bubbleSystem = createBubbleSystem(bubbleLayer)
   const playerController = createPlayerController()
@@ -154,7 +167,7 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
     if (dx !== 0 || dy !== 0) {
       const wantX = Math.max(8, Math.min(worldW - 8, playerState.x + dx * PLAYER_SPEED * dt))
       const wantY = Math.max(8, Math.min(worldH - 8, playerState.y + dy * PLAYER_SPEED * dt))
-      const moved = tryMove(collisionGrid, playerState.x, playerState.y, wantX, wantY)
+      const moved = tryMove(collisionGrid, tileSize, data.width, data.height, playerState.x, playerState.y, wantX, wantY)
       playerState.x = moved.x
       playerState.y = moved.y
       playerState.direction = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up')
@@ -199,6 +212,9 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
   app.ticker.add(gameLoop)
 
   return {
+    zones,
+    worldW,
+    worldH,
     destroy() {
       app.ticker.remove(gameLoop)
       removeWheel()
@@ -209,7 +225,7 @@ export function createGameEngine(app: Application, callbacks: GameCallbacks): Ga
       dayNightSystem.destroy()
       lightingSystem.destroy()
       doorSystem.destroy()
-      destroyMap()
+      destroyScene()
       bgLayer.destroy({ children: true })
       fgLayer.destroy({ children: true })
       worldContainer.destroy({ children: true })

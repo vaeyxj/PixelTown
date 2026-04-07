@@ -5,7 +5,7 @@
  * - 门有开/关/过渡三种状态
  */
 import { Container, Graphics } from 'pixi.js'
-import { MAP_ZONES, TILE_SIZE, type MapZone } from './mapData'
+import type { MapZone } from './editor/types'
 import type { CharacterState } from './simulation'
 
 interface DoorState {
@@ -28,14 +28,14 @@ const DOOR_TYPES = new Set(['meeting_room', 'gym'])
 const DOOR_SPEED = 3     // 每秒开关速度
 const AUTO_CLOSE_DELAY = 1.5  // 秒
 
-export function createDoorSystem(worldContainer: Container): DoorSystem {
+export function createDoorSystem(worldContainer: Container, zones: readonly MapZone[], tileSize: number): DoorSystem {
   const container = new Container()
   container.label = 'doors'
   worldContainer.addChild(container)
 
   const doors: DoorState[] = []
 
-  for (const zone of MAP_ZONES) {
+  for (const zone of zones) {
     if (!DOOR_TYPES.has(zone.type)) continue
 
     const graphic = new Graphics()
@@ -51,8 +51,8 @@ export function createDoorSystem(worldContainer: Container): DoorSystem {
   }
 
   function isNearDoor(ch: CharacterState, zone: MapZone): boolean {
-    const doorX = (zone.x + zone.width / 2) * TILE_SIZE
-    const doorY = (zone.y + zone.height) * TILE_SIZE
+    const doorX = (zone.x + zone.width / 2) * tileSize
+    const doorY = (zone.y + zone.height) * tileSize
     const dx = Math.abs(ch.x - doorX)
     const dy = Math.abs(ch.y - doorY)
     return dx < 20 && dy < 20
@@ -66,10 +66,10 @@ export function createDoorSystem(worldContainer: Container): DoorSystem {
 
       for (const door of doors) {
         const { zone, graphic } = door
-        const px = zone.x * TILE_SIZE
-        const py = zone.y * TILE_SIZE
-        const pw = zone.width * TILE_SIZE
-        const ph = zone.height * TILE_SIZE
+        const px = zone.x * tileSize
+        const py = zone.y * tileSize
+        const pw = zone.width * tileSize
+        const ph = zone.height * tileSize
 
         // 检测是否有人在门口附近
         const hasTraffic = characters.some(c => c.x > 0 && isNearDoor(c, zone))

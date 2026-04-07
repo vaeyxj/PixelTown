@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
-import { MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, MAP_ZONES } from '../game/mapData'
+import type { MapZone } from '../game/editor/types'
 import type { CharacterState, EmployeeStatus } from '../game/simulation'
 import { audioManager } from '../game/audioManager'
 import '../styles/pixel-ui.css'
@@ -13,6 +13,9 @@ interface StatsProps {
 interface MiniMapProps {
   readonly characters: readonly CharacterState[]
   readonly cameraRect: { x: number; y: number; w: number; h: number }
+  readonly worldW: number
+  readonly worldH: number
+  readonly zones: readonly MapZone[]
 }
 
 interface ToolbarProps {
@@ -121,11 +124,9 @@ export function StatsPanel({ stats, timeStr, onlineCount }: StatsProps) {
 const MINIMAP_W = 184
 const MINIMAP_H = 116
 
-export function MiniMap({ characters, cameraRect }: MiniMapProps) {
+export function MiniMap({ characters, cameraRect, worldW, worldH, zones }: MiniMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const scanRef = useRef(0)
-  const worldW = MAP_WIDTH * TILE_SIZE
-  const worldH = MAP_HEIGHT * TILE_SIZE
   const sx = MINIMAP_W / worldW
   const sy = MINIMAP_H / worldH
 
@@ -140,11 +141,11 @@ export function MiniMap({ characters, cameraRect }: MiniMapProps) {
     ctx.fillRect(0, 0, MINIMAP_W, MINIMAP_H)
 
     // 区域
-    for (const z of MAP_ZONES) {
-      const x = z.x * TILE_SIZE * sx
-      const y = z.y * TILE_SIZE * sy
-      const w = z.width * TILE_SIZE * sx
-      const h = z.height * TILE_SIZE * sy
+    for (const z of zones) {
+      const x = z.x * 16 * sx
+      const y = z.y * 16 * sy
+      const w = z.width * 16 * sx
+      const h = z.height * 16 * sy
       ctx.fillStyle = z.type === 'workstation' ? 'rgba(74, 154, 90, 0.3)'
         : z.type === 'meeting_room' ? 'rgba(60, 100, 160, 0.4)'
         : 'rgba(60, 60, 60, 0.25)'
@@ -177,7 +178,7 @@ export function MiniMap({ characters, cameraRect }: MiniMapProps) {
       ctx.fillStyle = 'rgba(0,0,0,0.08)'
       ctx.fillRect(0, row, MINIMAP_W, 1)
     }
-  }, [characters, cameraRect, sx, sy])
+  }, [characters, cameraRect, sx, sy, zones])
 
   useEffect(() => { draw() }, [draw])
 
