@@ -4,7 +4,7 @@
  */
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { Application } from 'pixi.js'
-import { loadTilesetFromBlob, type LoadedScene } from '../../game/editor/sceneLoader'
+import { loadTilesetFromBlob, applySceneToGame, type LoadedScene } from '../../game/editor/sceneLoader'
 import type { SceneData } from '../../game/editor/types'
 import { EditorViewport } from '../../game/editor/EditorViewport'
 import { EditorState } from '../../game/editor/EditorState'
@@ -383,6 +383,15 @@ export function EditorApp({ onExit }: EditorAppProps) {
     input.click()
   }, [refresh])
 
+  // 一键应用到游戏
+  const handleApply = useCallback(() => {
+    if (!editorState) return
+    const data = editorState.toSceneData()
+    applySceneToGame(data)
+    window.location.hash = ''
+    window.location.reload()
+  }, [editorState])
+
   // 导出保存
   const handleSave = useCallback(() => {
     if (!editorState) return
@@ -460,6 +469,12 @@ export function EditorApp({ onExit }: EditorAppProps) {
 
         <button onClick={handleUndo} style={actionBtnStyle} title="撤销 (Ctrl+Z)">↩ 撤销</button>
         <button onClick={handleRedo} style={actionBtnStyle} title="重做 (Ctrl+Shift+Z)">↪ 重做</button>
+
+        <div style={dividerStyle} />
+
+        <button onClick={handleApply} style={applyBtnStyle} title="应用到游戏并预览">
+          🚀 应用
+        </button>
 
         <div style={dividerStyle} />
 
@@ -612,6 +627,16 @@ const exitBtnStyle: React.CSSProperties = {
   background: '#2a1a1a',
   border: '1px solid #5a2a2a',
   color: '#ff6b6b',
+  padding: '4px 10px',
+  cursor: 'pointer',
+  fontFamily: 'monospace',
+  fontSize: 11,
+}
+
+const applyBtnStyle: React.CSSProperties = {
+  background: '#1a3a1a',
+  border: '1px solid #2a6a2a',
+  color: '#6bff6b',
   padding: '4px 10px',
   cursor: 'pointer',
   fontFamily: 'monospace',

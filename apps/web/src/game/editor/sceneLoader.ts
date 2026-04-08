@@ -45,13 +45,26 @@ function sliceTileset(baseTexture: Texture, def: TilesetDef): Texture[] {
   return textures
 }
 
-/** 加载场景 JSON 和所有瓦片集 */
+const SCENE_STORAGE_KEY = 'pixeltown-scene'
+
+/** 将场景数据写入 localStorage，供游戏引擎读取 */
+export function applySceneToGame(data: SceneData): void {
+  localStorage.setItem(SCENE_STORAGE_KEY, JSON.stringify(data))
+}
+
+/** 加载场景 JSON — 优先读 localStorage，否则 fetch 文件 */
 export async function loadScene(jsonPath: string): Promise<LoadedScene> {
-  const response = await fetch(jsonPath)
-  if (!response.ok) {
-    throw new Error(`场景加载失败: ${response.status} ${jsonPath}`)
+  const stored = localStorage.getItem(SCENE_STORAGE_KEY)
+  let raw: Record<string, unknown>
+  if (stored) {
+    raw = JSON.parse(stored)
+  } else {
+    const response = await fetch(jsonPath)
+    if (!response.ok) {
+      throw new Error(`场景加载失败: ${response.status} ${jsonPath}`)
+    }
+    raw = await response.json()
   }
-  const raw = await response.json()
   const data = normalizeSceneData(raw)
 
   const tilesets = new Map<string, LoadedTileset>()
