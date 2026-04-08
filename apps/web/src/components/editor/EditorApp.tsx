@@ -37,6 +37,8 @@ export function EditorApp({ onExit }: EditorAppProps) {
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
 
   const sceneRef = useRef<LoadedScene | null>(null)
+  /** 瓦片集 id → base64 data URL，用于应用到游戏 */
+  const tilesetImagesRef = useRef<Map<string, string>>(new Map())
   const [leftPanelWidth, setLeftPanelWidth] = useState(168)
   const isDraggingRef = useRef(false)
   const [activeTool, setActiveTool] = useState<ToolType>('brush')
@@ -333,6 +335,15 @@ export function EditorApp({ onExit }: EditorAppProps) {
     newTilesets.set(tileset.id, loaded)
     es.addTileset(tileset)
 
+    // 把图片转为 data URL 存起来，供"应用"时写入 localStorage
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        tilesetImagesRef.current.set(tileset.id, reader.result)
+      }
+    }
+    reader.readAsDataURL(imageFile)
+
     // 自动创建 tile 图层
     if (es.layers.length === 0) {
       es.addTileLayer('tile_1')
@@ -389,7 +400,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
   const handleApply = useCallback(() => {
     if (!editorState) return
     const data = editorState.toSceneData()
-    applySceneToGame(data)
+    applySceneToGame(data, tilesetImagesRef.current)
     window.location.hash = ''
     window.location.reload()
   }, [editorState])

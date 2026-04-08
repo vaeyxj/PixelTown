@@ -46,10 +46,14 @@ function sliceTileset(baseTexture: Texture, def: TilesetDef): Texture[] {
 }
 
 const SCENE_STORAGE_KEY = 'pixeltown-scene'
+const TILESET_STORAGE_PREFIX = 'pixeltown-tileset-'
 
-/** 将场景数据写入 localStorage，供游戏引擎读取 */
-export function applySceneToGame(data: SceneData): void {
+/** 将场景数据 + 瓦片集图片写入 localStorage，供游戏引擎读取 */
+export function applySceneToGame(data: SceneData, tilesetImages: ReadonlyMap<string, string>): void {
   localStorage.setItem(SCENE_STORAGE_KEY, JSON.stringify(data))
+  for (const [id, dataUrl] of tilesetImages) {
+    localStorage.setItem(TILESET_STORAGE_PREFIX + id, dataUrl)
+  }
 }
 
 /** 加载场景 JSON — 优先读 localStorage，否则 fetch 文件 */
@@ -72,7 +76,18 @@ export async function loadScene(jsonPath: string): Promise<LoadedScene> {
   // 并行加载所有瓦片集图片
   await Promise.all(
     data.tilesets.map(async (def) => {
-      const texture = await Assets.load<Texture>(def.imagePath)
+      // 优先从 localStorage 读取 data URL
+      const storedImage = localStorage.getItem(TILESET_STORAGE_PREFIX + def.id)
+      let texture: Texture
+      if (storedImage) {
+        const img = new Image()
+        img.src = storedImage
+        await img.decode()
+        const source = new ImageSource({ resource: img })
+        texture = new Texture({ source })
+      } else {
+        texture = await Assets.load<Texture>(def.imagePath)
+      }
       const textures = sliceTileset(texture, def)
       tilesets.set(def.id, { def, textures })
     }),
