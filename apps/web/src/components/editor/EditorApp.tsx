@@ -175,11 +175,13 @@ export function EditorApp({ onExit }: EditorAppProps) {
         resizeObserver.observe(el)
         resizeObserverRef.current = resizeObserver
 
-        // 空白场景
-        const gridSize = 96 * 56
+        // 空白场景（300x180 格 = 4800x2880 像素）
+        const mapW = 300
+        const mapH = 180
+        const gridSize = mapW * mapH
         const emptySceneData: SceneData = {
-          width: 96,
-          height: 56,
+          width: mapW,
+          height: mapH,
           tileSize: 16,
           tilesets: [],
           layers: [],
