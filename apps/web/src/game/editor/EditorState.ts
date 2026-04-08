@@ -56,6 +56,19 @@ export class EditorState {
 
   /** 当前选中图层索引 */
   activeLayerIndex = 0
+  /** 批量编辑模式（拖拽绘制中），结束后再 push 历史 */
+  private _batchEditing = false
+
+  get batchEditing(): boolean { return this._batchEditing }
+  set batchEditing(value: boolean) {
+    const wasBatching = this._batchEditing
+    this._batchEditing = value
+    // 批量结束时触发事件，让监听器 push 一次历史
+    if (wasBatching && !value) {
+      this.emit({ type: 'layer-changed', layerIndex: this.activeLayerIndex })
+    }
+  }
+
   /** 当前选中瓦片区域（tilesetId + 起始列行 + 区域尺寸） */
   selectedRegion: {
     tilesetId: string

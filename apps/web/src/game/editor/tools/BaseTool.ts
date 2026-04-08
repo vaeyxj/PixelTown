@@ -28,4 +28,6 @@ export interface EditorTool {
   onPointerMove(e: FederatedPointerEvent, world: WorldPoint): void
   /** 指针抬起 */
   onPointerUp(e: FederatedPointerEvent, world: WorldPoint): void
+  /** 指针离开画布（隐藏预览等） */
+  onPointerLeave?(): void
 }

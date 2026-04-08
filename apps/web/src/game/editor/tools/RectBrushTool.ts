@@ -86,6 +86,11 @@ export class RectBrushTool implements EditorTool {
     this.preview?.clear()
   }
 
+  onPointerLeave(): void {
+    if (this.ghostContainer) this.ghostContainer.visible = false
+    if (this.preview && !this.dragging) this.preview.clear()
+  }
+
   private drawPreview(): void {
     if (!this.preview) return
     const ts = this.state.tileSize

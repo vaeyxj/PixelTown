@@ -294,13 +294,19 @@ export class EditorViewport {
       }
     }
 
+    const onPointerLeave = () => {
+      this.currentTool?.onPointerLeave?.()
+    }
+
     stage.on('pointerdown', onPointerDown)
     stage.on('pointermove', onPointerMove)
     stage.on('pointerup', onPointerUp)
     stage.on('pointerupoutside', onPointerUp)
+    canvas.addEventListener('pointerleave', onPointerLeave)
 
     this.removeInteraction = () => {
       canvas.removeEventListener('wheel', this.handleWheel)
+      canvas.removeEventListener('pointerleave', onPointerLeave)
       window.removeEventListener('keydown', this.handleKeyDown)
       window.removeEventListener('keyup', this.handleKeyUp)
       stage.off('pointerdown', onPointerDown)

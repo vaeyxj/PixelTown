@@ -37,6 +37,7 @@ export class TileBrushTool implements EditorTool {
 
   onPointerDown(_e: FederatedPointerEvent, world: WorldPoint): void {
     this.painting = true
+    this.state.batchEditing = true
     this.paintAt(world)
   }
 
@@ -49,6 +50,11 @@ export class TileBrushTool implements EditorTool {
 
   onPointerUp(_e: FederatedPointerEvent, _world: WorldPoint): void {
     this.painting = false
+    this.state.batchEditing = false
+  }
+
+  onPointerLeave(): void {
+    if (this.ghostContainer) this.ghostContainer.visible = false
   }
 
   private paintAt(world: WorldPoint): void {
@@ -100,6 +106,7 @@ export class TileEraserTool implements EditorTool {
 
   onPointerDown(_e: FederatedPointerEvent, world: WorldPoint): void {
     this.erasing = true
+    this.state.batchEditing = true
     this.eraseAt(world)
   }
 
@@ -112,6 +119,13 @@ export class TileEraserTool implements EditorTool {
 
   onPointerUp(_e: FederatedPointerEvent, _world: WorldPoint): void {
     this.erasing = false
+    this.state.batchEditing = false
+  }
+
+  onPointerLeave(): void {
+    if (this.highlight) {
+      this.highlight.clear()
+    }
   }
 
   private eraseAt(world: WorldPoint): void {

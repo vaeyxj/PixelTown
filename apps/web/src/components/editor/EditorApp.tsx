@@ -264,8 +264,9 @@ export function EditorApp({ onExit }: EditorAppProps) {
             const currentTilesets = sceneRef.current?.tilesets ?? new Map()
             const updatedScene: LoadedScene = { data: updatedData, tilesets: currentTilesets }
             viewport.reloadScene(updatedScene)
-            // scene-replaced 来自 undo/redo/load，不重复 push 历史
-            if (event.type !== 'scene-replaced') {
+            // scene-replaced = undo/redo/load，不 push
+            // batchEditing = 连续绘制中，结束时再 push
+            if (event.type !== 'scene-replaced' && !newEditorState.batchEditing) {
               historyRef.current.push(updatedData)
             }
             refresh()
@@ -307,9 +308,8 @@ export function EditorApp({ onExit }: EditorAppProps) {
   // 撤销/重做（就地替换数据，保留对象引用和监听器）
   const handleUndo = useCallback(() => {
     const es = editorStateRef.current
-    const vp = viewportRef.current
-    if (!es || !vp) return
-    const prev = historyRef.current.undo(es.toSceneData())
+    if (!es) return
+    const prev = historyRef.current.undo()
     if (!prev) return
     es.loadSceneData(prev)
     refresh()
@@ -317,9 +317,8 @@ export function EditorApp({ onExit }: EditorAppProps) {
 
   const handleRedo = useCallback(() => {
     const es = editorStateRef.current
-    const vp = viewportRef.current
-    if (!es || !vp) return
-    const next = historyRef.current.redo(es.toSceneData())
+    if (!es) return
+    const next = historyRef.current.redo()
     if (!next) return
     es.loadSceneData(next)
     refresh()
