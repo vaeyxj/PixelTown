@@ -51,7 +51,8 @@ export async function loadScene(jsonPath: string): Promise<LoadedScene> {
   if (!response.ok) {
     throw new Error(`场景加载失败: ${response.status} ${jsonPath}`)
   }
-  const data: SceneData = await response.json()
+  const raw = await response.json()
+  const data = normalizeSceneData(raw)
 
   const tilesets = new Map<string, LoadedTileset>()
 
@@ -65,4 +66,19 @@ export async function loadScene(jsonPath: string): Promise<LoadedScene> {
   )
 
   return { data, tilesets }
+}
+
+/** 兼容旧格式 JSON：确保 collisionGrid/objectGrid 存在，过滤非 tile 图层 */
+function normalizeSceneData(raw: Record<string, unknown>): SceneData {
+  const width = (raw.width as number) ?? 96
+  const height = (raw.height as number) ?? 56
+  const gridSize = width * height
+  return {
+    ...(raw as unknown as SceneData),
+    collisionGrid: (raw.collisionGrid as number[]) ?? new Array(gridSize).fill(0),
+    objectGrid: (raw.objectGrid as number[]) ?? new Array(gridSize).fill(0),
+    layers: ((raw.layers as unknown[]) ?? []).filter(
+      (l: unknown) => (l as { type: string }).type === 'tile'
+    ) as SceneData['layers'],
+  }
 }

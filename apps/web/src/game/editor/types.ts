@@ -31,22 +31,8 @@ export interface TileLayer {
   readonly data: readonly number[]
 }
 
-export interface ObjectLayer {
-  readonly type: 'object'
-  readonly name: string
-  readonly visible: boolean
-  readonly objects: readonly SceneObject[]
-}
-
-export interface CollisionLayer {
-  readonly type: 'collision'
-  readonly name: string
-  readonly visible: boolean
-  /** 0 = 不可行走, 1 = 可行走 */
-  readonly data: readonly number[]
-}
-
-export type Layer = TileLayer | ObjectLayer | CollisionLayer
+/** 图层类型现在只有 TileLayer */
+export type Layer = TileLayer
 
 // ====== 场景对象 ======
 
@@ -113,8 +99,12 @@ export interface SceneData {
   /** 瓦片尺寸（像素） */
   readonly tileSize: number
   readonly tilesets: readonly TilesetDef[]
-  /** 图层列表（渲染顺序：从底到顶） */
+  /** 瓦片图层列表（渲染顺序：从底到顶） */
   readonly layers: readonly Layer[]
+  /** 碰撞网格，长度 = width * height，0 = 可行走，1 = 不可通过 */
+  readonly collisionGrid: readonly number[]
+  /** 对象网格，长度 = width * height，0 = 无，1 = 可交互对象 */
+  readonly objectGrid: readonly number[]
   /** 区域定义 */
   readonly zones: readonly ZoneData[]
 }

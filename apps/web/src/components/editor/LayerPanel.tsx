@@ -1,6 +1,6 @@
 /**
- * 图层面板 — 图层列表管理
- * 功能：显示/隐藏、选中、上下移动、新增/删除
+ * 图层面板 — 瓦片图层列表管理
+ * 功能：显示/隐藏、选中、新增/删除（无排序）
  */
 import type { EditorState } from '../../game/editor/EditorState'
 
@@ -12,12 +12,6 @@ interface LayerPanelProps {
   readonly onLayerAdded?: (index: number) => void
 }
 
-const LAYER_ICONS: Record<string, string> = {
-  tile: '🗺️',
-  object: '📦',
-  collision: '🚧',
-}
-
 export function LayerPanel({ state, activeIndex, onSelectLayer, onRefresh, onLayerAdded }: LayerPanelProps) {
   const layers = state.layers
 
@@ -26,33 +20,16 @@ export function LayerPanel({ state, activeIndex, onSelectLayer, onRefresh, onLay
     onRefresh()
   }
 
-  const handleMoveUp = (idx: number) => {
-    if (idx < layers.length - 1) {
-      state.moveLayer(idx, idx + 1)
-      onRefresh()
-    }
-  }
-
-  const handleMoveDown = (idx: number) => {
-    if (idx > 0) {
-      state.moveLayer(idx, idx - 1)
-      onRefresh()
-    }
-  }
-
   const handleRemove = (idx: number) => {
     state.removeLayer(idx)
     onRefresh()
   }
 
-  const handleAdd = (type: 'tile' | 'object' | 'collision') => {
-    const count = layers.filter(l => l.type === type).length
-    const name = `${type}_${count + 1}`
-    if (type === 'tile') state.addTileLayer(name)
-    else if (type === 'object') state.addObjectLayer(name)
-    else state.addCollisionLayer(name)
+  const handleAdd = () => {
+    const count = layers.length
+    const name = `tile_${count + 1}`
+    state.addTileLayer(name)
     const newIdx = state.layers.length - 1
-    // 自动选中新图层并通知
     onSelectLayer(newIdx)
     onLayerAdded?.(newIdx)
     onRefresh()
@@ -73,11 +50,7 @@ export function LayerPanel({ state, activeIndex, onSelectLayer, onRefresh, onLay
         marginBottom: 4,
       }}>
         <span style={{ color: '#6a8aaa', fontSize: 10, letterSpacing: 1 }}>LAYERS</span>
-        <div style={{ display: 'flex', gap: 2 }}>
-          <button onClick={() => handleAdd('tile')} style={addBtnStyle} title="添加瓦片图层">+🗺️</button>
-          <button onClick={() => handleAdd('object')} style={addBtnStyle} title="添加对象图层">+📦</button>
-          <button onClick={() => handleAdd('collision')} style={addBtnStyle} title="添加碰撞图层">+🚧</button>
-        </div>
+        <button onClick={handleAdd} style={addBtnStyle} title="添加瓦片图层">+ 图层</button>
       </div>
 
       {/* 图层列表（从顶到底） */}
@@ -115,8 +88,7 @@ export function LayerPanel({ state, activeIndex, onSelectLayer, onRefresh, onLay
               👁️
             </button>
 
-            {/* 图标 + 名称 */}
-            <span style={{ fontSize: 10 }}>{LAYER_ICONS[layer.type] ?? '?'}</span>
+            {/* 名称 */}
             <span style={{
               flex: 1,
               color: isActive ? '#8ab4f8' : '#8a8aaa',
@@ -128,18 +100,6 @@ export function LayerPanel({ state, activeIndex, onSelectLayer, onRefresh, onLay
             }}>
               {layer.name}
             </span>
-
-            {/* 上下移动 */}
-            <button
-              onClick={(e) => { e.stopPropagation(); handleMoveUp(idx) }}
-              style={iconBtnStyle}
-              title="上移"
-            >↑</button>
-            <button
-              onClick={(e) => { e.stopPropagation(); handleMoveDown(idx) }}
-              style={iconBtnStyle}
-              title="下移"
-            >↓</button>
 
             {/* 删除 */}
             <button

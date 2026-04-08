@@ -9,44 +9,20 @@ import type { SceneData } from '../../game/editor/types'
 import { EditorViewport } from '../../game/editor/EditorViewport'
 import { EditorState } from '../../game/editor/EditorState'
 import { PanTool } from '../../game/editor/tools/PanTool'
-import { SelectTool } from '../../game/editor/tools/SelectTool'
 import { TileBrushTool, TileEraserTool, TileFillTool } from '../../game/editor/tools/TileBrushTool'
 import { CollisionBrushTool } from '../../game/editor/tools/CollisionBrushTool'
-import { ObjectPlaceTool } from '../../game/editor/tools/ObjectPlaceTool'
+import { ObjectMarkTool } from '../../game/editor/tools/ObjectMarkTool'
 import { ZoneTool } from '../../game/editor/tools/ZoneTool'
 import { RectBrushTool } from '../../game/editor/tools/RectBrushTool'
 import { LineTool } from '../../game/editor/tools/LineTool'
 import { EditorHistory } from '../../game/editor/history'
-import type { SceneObject, TilesetDef, ZoneData } from '../../game/editor/types'
+import type { TilesetDef, ZoneData } from '../../game/editor/types'
 import { LayerPanel } from './LayerPanel'
 import { TilesetPanel } from './TilesetPanel'
-import { PropertyPanel } from './PropertyPanel'
 import { AssetBrowser } from './AssetBrowser'
 import { ZonePanel } from './ZonePanel'
-import { AnimationEditor } from './AnimationEditor'
 
-type ToolType = 'select' | 'pan' | 'brush' | 'eraser' | 'fill' | 'rect' | 'line' | 'collision' | 'object' | 'zone'
-
-/** 工具所需的图层类型，null 表示通用 */
-const TOOL_LAYER_TYPE: Record<ToolType, 'tile' | 'collision' | 'object' | null> = {
-  select: null,
-  pan: null,
-  brush: 'tile',
-  eraser: 'tile',
-  fill: 'tile',
-  rect: 'tile',
-  line: 'tile',
-  collision: 'collision',
-  object: 'object',
-  zone: null,
-}
-
-/** 图层类型对应的默认工具 */
-const LAYER_DEFAULT_TOOL: Record<string, ToolType> = {
-  tile: 'brush',
-  collision: 'collision',
-  object: 'select',
-}
+type ToolType = 'pan' | 'brush' | 'eraser' | 'fill' | 'rect' | 'line' | 'collision' | 'object' | 'zone'
 
 interface EditorAppProps {
   readonly onExit: () => void
@@ -61,22 +37,19 @@ export function EditorApp({ onExit }: EditorAppProps) {
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
 
   const sceneRef = useRef<LoadedScene | null>(null)
-  const [leftPanelWidth, setLeftPanelWidth] = useState(200)
+  const [leftPanelWidth, setLeftPanelWidth] = useState(168)
   const isDraggingRef = useRef(false)
-  const [activeTool, setActiveTool] = useState<ToolType>('select')
-  const [selectedObject, setSelectedObject] = useState<SceneObject | null>(null)
+  const [activeTool, setActiveTool] = useState<ToolType>('brush')
   const [selectedZone, setSelectedZone] = useState<ZoneData | null>(null)
-  const [showAnimEditor, setShowAnimEditor] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [, forceUpdate] = useState(0)
-  // 用 state 暴露给 render，ref 暴露给 callbacks
   const [editorState, setEditorState] = useState<EditorState | null>(null)
   const [scene, setScene] = useState<LoadedScene | null>(null)
 
   const refresh = useCallback(() => forceUpdate(n => n + 1), [])
 
-  // 创建工具实例（在事件回调中调用，可以读 ref）
+  // 创建工具实例
   const createTool = useCallback((toolType: ToolType) => {
     const vp = viewportRef.current
     const es = editorStateRef.current
@@ -86,15 +59,6 @@ export function EditorApp({ onExit }: EditorAppProps) {
     switch (toolType) {
       case 'pan':
         vp.setTool(new PanTool((dx, dy) => vp.pan(dx, dy)))
-        break
-      case 'select':
-        vp.setTool(new SelectTool({
-          getObjects: () => {
-            return es.layers.filter(l => l.type === 'object').flatMap(l => l.type === 'object' ? l.objects : [])
-          },
-          onSelect: (obj) => setSelectedObject(obj),
-          onTransform: () => {},
-        }))
         break
       case 'brush':
         if (sc) vp.setTool(new TileBrushTool(es, sc))
@@ -115,7 +79,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
         vp.setTool(new CollisionBrushTool(es))
         break
       case 'object':
-        if (sc) vp.setTool(new ObjectPlaceTool(es, sc))
+        vp.setTool(new ObjectMarkTool(es))
         break
       case 'zone':
         vp.setTool(new ZoneTool(es, {
@@ -126,26 +90,15 @@ export function EditorApp({ onExit }: EditorAppProps) {
     }
   }, [])
 
-  /** 切换工具 + 自动切到对应图层类型 */
+  /** 切换工具 — collision/object 工具不再依赖图层 */
   const switchTool = useCallback((toolType: ToolType) => {
     const es = editorStateRef.current
     if (es) {
-      const requiredType = TOOL_LAYER_TYPE[toolType]
-      if (requiredType && es.activeLayer?.type !== requiredType) {
-        const idx = es.layers.findIndex(l => l.type === requiredType)
-        if (idx >= 0) {
-          es.setActiveLayer(idx)
-        } else if (requiredType === 'tile') {
-          // 自动创建 tile 图层
-          es.addTileLayer('tile_1')
-          es.setActiveLayer(es.layers.length - 1)
-        } else if (requiredType === 'collision') {
-          es.addCollisionLayer('collision_1')
-          es.setActiveLayer(es.layers.length - 1)
-        } else if (requiredType === 'object') {
-          es.addObjectLayer('object_1')
-          es.setActiveLayer(es.layers.length - 1)
-        }
+      // 瓦片工具需要有 tile 图层
+      const tileTools: ToolType[] = ['brush', 'eraser', 'fill', 'rect', 'line']
+      if (tileTools.includes(toolType) && es.layers.length === 0) {
+        es.addTileLayer('tile_1')
+        es.setActiveLayer(0)
       }
     }
     setActiveTool(toolType)
@@ -153,17 +106,11 @@ export function EditorApp({ onExit }: EditorAppProps) {
     refresh()
   }, [createTool, refresh])
 
-  /** 瓦片区域选择 → 自动切 tile 图层 + 笔刷 */
+  /** 瓦片区域选择 → 自动切笔刷 */
   const handleSelectRegion = useCallback((tilesetId: string, col: number, row: number, cols: number, rows: number) => {
     const es = editorStateRef.current
     if (!es) return
     es.selectedRegion = { tilesetId, col, row, cols, rows }
-
-    // 确保选中 tile 图层
-    if (es.activeLayer?.type !== 'tile') {
-      const idx = es.layers.findIndex(l => l.type === 'tile')
-      if (idx >= 0) es.setActiveLayer(idx)
-    }
 
     refresh()
     // 自动切换到瓦片绘制工具
@@ -174,20 +121,16 @@ export function EditorApp({ onExit }: EditorAppProps) {
     }
   }, [activeTool, createTool, refresh])
 
-  /** 图层选择 → 自动切到对应工具 */
+  /** 图层选择 */
   const handleSelectLayer = useCallback((index: number) => {
     const es = editorStateRef.current
     if (!es) return
     es.setActiveLayer(index)
-    const layer = es.layers[index]
-    if (layer) {
-      const currentRequired = TOOL_LAYER_TYPE[activeTool]
-      // 当前工具不兼容该图层类型时，自动切到默认工具
-      if (currentRequired !== null && currentRequired !== layer.type) {
-        const defaultTool = LAYER_DEFAULT_TOOL[layer.type] ?? 'select'
-        setActiveTool(defaultTool)
-        createTool(defaultTool)
-      }
+    // 自动切到瓦片工具
+    const tileTools: ToolType[] = ['brush', 'eraser', 'fill', 'rect', 'line']
+    if (!tileTools.includes(activeTool)) {
+      setActiveTool('brush')
+      createTool('brush')
     }
     refresh()
   }, [activeTool, createTool, refresh])
@@ -233,12 +176,15 @@ export function EditorApp({ onExit }: EditorAppProps) {
         resizeObserverRef.current = resizeObserver
 
         // 空白场景
+        const gridSize = 96 * 56
         const emptySceneData: SceneData = {
           width: 96,
           height: 56,
           tileSize: 16,
           tilesets: [],
           layers: [],
+          collisionGrid: new Array(gridSize).fill(0),
+          objectGrid: new Array(gridSize).fill(0),
           zones: [],
         }
         const loadedScene: LoadedScene = { data: emptySceneData, tilesets: new Map() }
@@ -259,7 +205,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
 
         // 监听编辑器状态变更，刷新渲染 + 保存历史
         newEditorState.on((event) => {
-          if (event.type === 'layer-changed' || event.type === 'layer-list-changed' || event.type === 'scene-replaced') {
+          if (event.type === 'layer-changed' || event.type === 'layer-list-changed' || event.type === 'grid-changed' || event.type === 'scene-replaced') {
             const updatedData = newEditorState.toSceneData()
             const currentTilesets = sceneRef.current?.tilesets ?? new Map()
             const updatedScene: LoadedScene = { data: updatedData, tilesets: currentTilesets }
@@ -275,12 +221,8 @@ export function EditorApp({ onExit }: EditorAppProps) {
 
         setLoading(false)
 
-        // 默认选择工具
-        viewport.setTool(new SelectTool({
-          getObjects: () => newEditorState.layers.filter(l => l.type === 'object').flatMap(l => l.type === 'object' ? l.objects : []),
-          onSelect: (obj) => setSelectedObject(obj),
-          onTransform: () => {},
-        }))
+        // 默认笔刷工具
+        viewport.setTool(new PanTool((dx, dy) => viewport.pan(dx, dy)))
 
       } catch (err) {
         if (!cancelled) {
@@ -305,7 +247,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
     }
   }, [refresh])
 
-  // 撤销/重做（就地替换数据，保留对象引用和监听器）
+  // 撤销/重做
   const handleUndo = useCallback(() => {
     const es = editorStateRef.current
     if (!es) return
@@ -339,7 +281,6 @@ export function EditorApp({ onExit }: EditorAppProps) {
 
       if (e.key === 'Escape') { onExit(); return }
       if (!e.ctrlKey && !e.metaKey) {
-        if (e.key === 'v' || e.key === 'V') switchTool('select')
         if (e.key === 'h' || e.key === 'H') switchTool('pan')
         if (e.key === 'b' || e.key === 'B') switchTool('brush')
         if (e.key === 'e' || e.key === 'E') switchTool('eraser')
@@ -380,7 +321,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
     document.addEventListener('mouseup', onMouseUp)
   }, [leftPanelWidth])
 
-  // 素材导入：从文件直接加载纹理 + 自动创建 tile 图层
+  // 素材导入
   const handleImportTileset = useCallback(async (tileset: TilesetDef, imageFile: File) => {
     const es = editorStateRef.current
     const currentScene = sceneRef.current
@@ -390,21 +331,17 @@ export function EditorApp({ onExit }: EditorAppProps) {
     newTilesets.set(tileset.id, loaded)
     es.addTileset(tileset)
 
-    // 自动创建 tile 图层（如果没有）
-    const hasTileLayer = es.layers.some(l => l.type === 'tile')
-    if (!hasTileLayer) {
+    // 自动创建 tile 图层
+    if (es.layers.length === 0) {
       es.addTileLayer('tile_1')
     }
-    // 自动选中第一个 tile 图层
-    const tileIdx = es.layers.findIndex(l => l.type === 'tile')
-    if (tileIdx >= 0) es.setActiveLayer(tileIdx)
+    es.setActiveLayer(0)
 
     const updatedData = es.toSceneData()
     const updatedScene: LoadedScene = { data: updatedData, tilesets: newTilesets }
     setScene(updatedScene)
     sceneRef.current = updatedScene
 
-    // 自动切到笔刷
     setActiveTool('brush')
     createTool('brush')
     refresh()
@@ -420,7 +357,19 @@ export function EditorApp({ onExit }: EditorAppProps) {
       if (!file) return
       try {
         const text = await file.text()
-        const data = JSON.parse(text) as import('../../game/editor/types').SceneData
+        const raw = JSON.parse(text) as Record<string, unknown>
+        // 兼容旧格式：如果没有 collisionGrid/objectGrid 则初始化
+        const width = (raw.width as number) ?? 96
+        const height = (raw.height as number) ?? 56
+        const gridSize = width * height
+        const data: SceneData = {
+          ...(raw as unknown as SceneData),
+          collisionGrid: (raw.collisionGrid as number[]) ?? new Array(gridSize).fill(0),
+          objectGrid: (raw.objectGrid as number[]) ?? new Array(gridSize).fill(0),
+          layers: ((raw.layers as unknown[]) ?? []).filter(
+            (l: unknown) => (l as { type: string }).type === 'tile'
+          ) as SceneData['layers'],
+        }
         const es = editorStateRef.current
         if (!es) return
         es.loadSceneData(data)
@@ -448,9 +397,8 @@ export function EditorApp({ onExit }: EditorAppProps) {
     URL.revokeObjectURL(url)
   }, [editorState])
 
-  // 工具栏分组：通用 | 瓦片 | 碰撞/对象/区域
+  // 工具栏分组
   const toolGroups: { type: ToolType; icon: string; label: string; shortcut: string; sep?: boolean }[] = [
-    { type: 'select', icon: '🖱️', label: '选择', shortcut: 'V' },
     { type: 'pan', icon: '✋', label: '平移', shortcut: 'H' },
     { type: 'brush', icon: '🖌️', label: '笔刷', shortcut: 'B', sep: true },
     { type: 'eraser', icon: '🧹', label: '橡皮擦', shortcut: 'E' },
@@ -461,8 +409,6 @@ export function EditorApp({ onExit }: EditorAppProps) {
     { type: 'object', icon: '📌', label: '对象', shortcut: 'O' },
     { type: 'zone', icon: '🏷️', label: '区域', shortcut: 'Z' },
   ]
-
-  const activeLayerType = editorState?.activeLayer?.type ?? null
 
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', background: '#1a1a2e' }}>
@@ -483,10 +429,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
         <div style={dividerStyle} />
 
         {toolGroups.map(t => {
-          const requiredLayer = TOOL_LAYER_TYPE[t.type]
           const isActive = activeTool === t.type
-          // 工具是否匹配当前图层（null = 通用工具，始终兼容）
-          const isCompatible = requiredLayer === null || requiredLayer === activeLayerType
           return (
             <span key={t.type} style={{ display: 'contents' }}>
               {t.sep && <div style={dividerStyle} />}
@@ -495,7 +438,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
                 style={{
                   background: isActive ? '#2a3a5a' : 'transparent',
                   border: isActive ? '1px solid #4a6a9a' : '1px solid transparent',
-                  color: isActive ? '#8ab4f8' : isCompatible ? '#6a6a8a' : '#3a3a4a',
+                  color: isActive ? '#8ab4f8' : '#6a6a8a',
                   padding: '4px 8px',
                   cursor: 'pointer',
                   fontFamily: 'monospace',
@@ -503,9 +446,8 @@ export function EditorApp({ onExit }: EditorAppProps) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 3,
-                  opacity: isCompatible || isActive ? 1 : 0.5,
                 }}
-                title={`${t.label} (${t.shortcut})${!isCompatible ? ' — 需要' + (requiredLayer === 'tile' ? '瓦片' : requiredLayer === 'collision' ? '碰撞' : '对象') + '图层' : ''}`}
+                title={`${t.label} (${t.shortcut})`}
               >
                 <span>{t.icon}</span>
                 <span>{t.label}</span>
@@ -546,28 +488,23 @@ export function EditorApp({ onExit }: EditorAppProps) {
           flexShrink: 0,
         }}>
           {/* 图层面板 */}
-          <div style={{ padding: 8, borderBottom: '1px solid #2a2a4a', overflowY: 'auto', maxHeight: '40%' }}>
+          <div style={{ padding: 6, borderBottom: '1px solid #2a2a4a', overflowY: 'auto', maxHeight: '30%' }}>
             {editorState && (
               <LayerPanel
                 state={editorState}
                 activeIndex={editorState.activeLayerIndex}
                 onSelectLayer={handleSelectLayer}
                 onRefresh={refresh}
-                onLayerAdded={(idx) => {
-                  // 新建图层后自动切到对应工具
-                  const layer = editorState.layers[idx]
-                  if (layer) {
-                    const defaultTool = LAYER_DEFAULT_TOOL[layer.type] ?? 'select'
-                    setActiveTool(defaultTool)
-                    createTool(defaultTool)
-                  }
+                onLayerAdded={() => {
+                  setActiveTool('brush')
+                  createTool('brush')
                 }}
               />
             )}
           </div>
 
           {/* 瓦片集面板 */}
-          <div style={{ padding: 8, overflowY: 'auto', overflowX: 'auto', flex: 1, borderBottom: '1px solid #2a2a4a' }}>
+          <div style={{ padding: 6, overflowY: 'auto', overflowX: 'auto', flex: 1, borderBottom: '1px solid #2a2a4a' }}>
             {scene && (
               <TilesetPanel
                 scene={scene}
@@ -578,7 +515,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
           </div>
 
           {/* 素材浏览器 */}
-          <div style={{ padding: 8, overflowY: 'auto', maxHeight: '25%' }}>
+          <div style={{ padding: 6, overflowY: 'auto', maxHeight: '20%' }}>
             <AssetBrowser
               tilesets={editorState?.tilesets ?? []}
               onImportTileset={handleImportTileset}
@@ -639,14 +576,14 @@ export function EditorApp({ onExit }: EditorAppProps) {
           }}>
             <span>空格+拖拽: 平移</span>
             <span>滚轮: 缩放</span>
-            <span>V:选择 H:平移 B:笔刷 E:橡皮擦 G:填充 R:矩形 L:直线 C:碰撞 O:对象 Z:区域</span>
+            <span>H:平移 B:笔刷 E:橡皮擦 G:填充 R:矩形 L:直线 C:碰撞 O:对象 Z:区域</span>
             {editorState && <span>图层: {editorState.activeLayer?.name ?? '-'}</span>}
             {editorState?.selectedRegion && <span>瓦片: {editorState.selectedRegion.tilesetId} [{editorState.selectedRegion.cols}x{editorState.selectedRegion.rows}]</span>}
           </div>
         </div>
 
-        {/* 右侧面板：属性 / 区域 */}
-        {(selectedObject || activeTool === 'zone') && editorState && (
+        {/* 右侧面板：区域 */}
+        {activeTool === 'zone' && editorState && (
           <div style={{
             width: 200,
             background: '#0d0d1a',
@@ -658,39 +595,15 @@ export function EditorApp({ onExit }: EditorAppProps) {
             flexShrink: 0,
             overflowY: 'auto',
           }}>
-            {activeTool === 'zone' ? (
-              <ZonePanel
-                editorState={editorState}
-                selectedZone={selectedZone}
-                onSelectZone={setSelectedZone}
-                onRefresh={refresh}
-              />
-            ) : selectedObject ? (
-              <PropertyPanel
-                object={selectedObject}
-                editorState={editorState}
-                onRefresh={refresh}
-              />
-            ) : null}
+            <ZonePanel
+              editorState={editorState}
+              selectedZone={selectedZone}
+              onSelectZone={setSelectedZone}
+              onRefresh={refresh}
+            />
           </div>
         )}
       </div>
-
-      {/* 动画编辑器弹窗 */}
-      {showAnimEditor && scene && editorState?.selectedRegion && (
-        <AnimationEditor
-          scene={scene}
-          tilesetId={editorState.selectedRegion.tilesetId}
-          onSave={(anim) => {
-            if (selectedObject) {
-              editorState.updateObject(selectedObject.id, { animation: anim })
-            }
-            setShowAnimEditor(false)
-            refresh()
-          }}
-          onClose={() => setShowAnimEditor(false)}
-        />
-      )}
     </div>
   )
 }

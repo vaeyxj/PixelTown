@@ -1,22 +1,20 @@
 /**
- * 碰撞笔刷工具 — 直接在 EditorState.collisionGrid 上标记碰撞
- * 左键标记不可通过（红色），右键取消标记（绿色）
- * 碰撞网格实时以半透明叠加显示
+ * 对象标记工具 — 在 EditorState.objectGrid 上标记可交互网格
+ * 左键标记为对象，右键取消标记
  */
 import { Container, Graphics } from 'pixi.js'
 import type { FederatedPointerEvent } from 'pixi.js'
 import type { EditorTool, WorldPoint } from './BaseTool'
 import type { EditorState } from '../EditorState'
 
-export class CollisionBrushTool implements EditorTool {
-  readonly name = '碰撞'
-  readonly icon = '🚧'
+export class ObjectMarkTool implements EditorTool {
+  readonly name = '对象标记'
+  readonly icon = '📌'
 
   private state: EditorState
   private painting = false
-  /** true = 标记为阻挡，false = 取消阻挡 */
-  private paintBlocked = true
-  private collisionOverlay: Graphics | null = null
+  private paintObject = true
+  private objectOverlay: Graphics | null = null
   private cursorHighlight: Graphics | null = null
 
   constructor(state: EditorState) {
@@ -24,12 +22,12 @@ export class CollisionBrushTool implements EditorTool {
   }
 
   activate(toolOverlay: Container): void {
-    this.collisionOverlay = new Graphics()
-    this.collisionOverlay.label = 'collision-overlay'
-    toolOverlay.addChild(this.collisionOverlay)
+    this.objectOverlay = new Graphics()
+    this.objectOverlay.label = 'object-overlay'
+    toolOverlay.addChild(this.objectOverlay)
 
     this.cursorHighlight = new Graphics()
-    this.cursorHighlight.label = 'collision-cursor'
+    this.cursorHighlight.label = 'object-cursor'
     toolOverlay.addChild(this.cursorHighlight)
 
     this.redrawOverlay()
@@ -37,13 +35,13 @@ export class CollisionBrushTool implements EditorTool {
 
   deactivate(): void {
     this.painting = false
-    this.collisionOverlay = null
+    this.objectOverlay = null
     this.cursorHighlight = null
   }
 
   onPointerDown(e: FederatedPointerEvent, world: WorldPoint): void {
-    // 左键 = 标记阻挡，右键 = 取消阻挡
-    this.paintBlocked = e.button !== 2
+    // 左键 = 标记对象，右键 = 取消
+    this.paintObject = e.button !== 2
     this.painting = true
     this.paintAt(world)
   }
@@ -63,7 +61,7 @@ export class CollisionBrushTool implements EditorTool {
     const ts = this.state.tileSize
     const tx = Math.floor(world.x / ts)
     const ty = Math.floor(world.y / ts)
-    this.state.setCollision(tx, ty, this.paintBlocked)
+    this.state.setObject(tx, ty, this.paintObject)
     this.redrawOverlay()
   }
 
@@ -78,20 +76,20 @@ export class CollisionBrushTool implements EditorTool {
       .stroke({ color: 0xffffff, alpha: 0.8, width: 1 })
   }
 
-  /** 重绘整个碰撞叠加层 */
+  /** 重绘对象标记叠加层 */
   private redrawOverlay(): void {
-    if (!this.collisionOverlay) return
-    const g = this.collisionOverlay
+    if (!this.objectOverlay) return
+    const g = this.objectOverlay
     g.clear()
 
-    const { width, tileSize, collisionGrid } = this.state
-    for (let i = 0; i < collisionGrid.length; i++) {
-      if (collisionGrid[i] === 0) continue
+    const { width, tileSize, objectGrid } = this.state
+    for (let i = 0; i < objectGrid.length; i++) {
+      if (objectGrid[i] === 0) continue
       const tx = i % width
       const ty = Math.floor(i / width)
-      // 红色 = 不可通过
+      // 蓝色 = 可交互对象
       g.rect(tx * tileSize, ty * tileSize, tileSize, tileSize)
-        .fill({ color: 0xff4444, alpha: 0.3 })
+        .fill({ color: 0x4488ff, alpha: 0.3 })
     }
   }
 }

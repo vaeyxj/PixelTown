@@ -1,21 +1,18 @@
 /**
  * 场景渲染器 — 将 SceneData 渲染为 PixiJS 显示对象
  * - TileLayer: 烘焙为 RenderTexture（静态，高性能）
- * - ObjectLayer: 保持为活跃 Sprite/AnimatedSprite（可交互）
- * - CollisionLayer: 不渲染（仅在编辑器模式下叠加显示）
+ * - collisionGrid / objectGrid: 不渲染（仅在编辑器工具叠加显示）
  */
 import {
   Application,
-  AnimatedSprite as PixiAnimatedSprite,
   Container,
   Graphics,
   RenderTexture,
   Sprite,
   Text,
   TextStyle,
-  Texture,
 } from 'pixi.js'
-import type { TileLayer, ObjectLayer, ZoneData } from './types'
+import type { TileLayer, ZoneData } from './types'
 import { decodeTile } from './types'
 import type { LoadedScene } from './sceneLoader'
 
@@ -72,62 +69,6 @@ function renderTileLayer(
   return layerSprite
 }
 
-/** 渲染对象图层 */
-function renderObjectLayer(
-  layer: ObjectLayer,
-  scene: LoadedScene,
-): Container | null {
-  if (!layer.visible) return null
-
-  const { tilesets } = scene
-  const container = new Container()
-  container.label = `obj:${layer.name}`
-
-  for (const obj of layer.objects) {
-    let displayObj: Sprite | PixiAnimatedSprite | null = null
-
-    // 动画精灵
-    if (obj.animation && obj.tilesetId) {
-      const loaded = tilesets.get(obj.tilesetId)
-      if (loaded) {
-        const frameTextures = obj.animation.frames.map((f) => ({
-          texture: loaded.textures[f.tileIndex] ?? Texture.WHITE,
-          time: f.duration,
-        }))
-        if (frameTextures.length > 0) {
-          const animSprite = new PixiAnimatedSprite(frameTextures)
-          animSprite.loop = obj.animation.loop
-          animSprite.play()
-          displayObj = animSprite
-        }
-      }
-    }
-
-    // 静态精灵
-    if (!displayObj && obj.tilesetId != null && obj.tileIndex != null) {
-      const loaded = tilesets.get(obj.tilesetId)
-      if (loaded && obj.tileIndex < loaded.textures.length) {
-        displayObj = new Sprite(loaded.textures[obj.tileIndex])
-      }
-    }
-
-    // 无纹理时用占位矩形
-    if (!displayObj) {
-      displayObj = new Sprite(Texture.WHITE)
-    }
-
-    displayObj.x = obj.x
-    displayObj.y = obj.y
-    displayObj.width = obj.width * obj.scaleX
-    displayObj.height = obj.height * obj.scaleY
-    displayObj.rotation = (obj.rotation * Math.PI) / 180
-    displayObj.label = obj.name
-    container.addChild(displayObj)
-  }
-
-  return container
-}
-
 /** 渲染区域标签 */
 function renderZoneLabels(zones: readonly ZoneData[], tileSize: number): Container {
   const labels = new Container()
@@ -182,30 +123,14 @@ export function renderScene(
   bg.label = 'background'
   worldContainer.addChild(bg)
 
-  // 按顺序渲染图层
+  // 只渲染瓦片图层
   for (const layer of data.layers) {
-    switch (layer.type) {
-      case 'tile': {
-        const sprite = renderTileLayer(app, layer, scene, worldW, worldH)
-        if (sprite) {
-          worldContainer.addChild(sprite)
-          // 记录 RT 以便销毁
-          if (sprite.texture instanceof RenderTexture) {
-            renderTextures.push(sprite.texture)
-          }
-        }
-        break
+    const sprite = renderTileLayer(app, layer, scene, worldW, worldH)
+    if (sprite) {
+      worldContainer.addChild(sprite)
+      if (sprite.texture instanceof RenderTexture) {
+        renderTextures.push(sprite.texture)
       }
-      case 'object': {
-        const container = renderObjectLayer(layer, scene)
-        if (container) {
-          worldContainer.addChild(container)
-        }
-        break
-      }
-      case 'collision':
-        // 运行时不渲染碰撞层
-        break
     }
   }
 
@@ -213,11 +138,7 @@ export function renderScene(
   const labels = renderZoneLabels(data.zones, data.tileSize)
   worldContainer.addChild(labels)
 
-  // 动画 ticker（预留，供 object layer 中的 AnimatedSprite 使用）
-  const animTicker = () => {
-    // AnimatedSprite 的动画由 PixiJS 自动驱动
-    // 这里可以放置额外的自定义动画逻辑
-  }
+  const animTicker = () => {}
 
   return {
     animTicker,

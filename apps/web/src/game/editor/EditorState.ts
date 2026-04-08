@@ -5,8 +5,7 @@
 import type {
   SceneData,
   TilesetDef,
-  Layer,
-  SceneObject,
+  TileLayer,
   ZoneData,
 } from './types'
 import { encodeTile } from './types'
@@ -17,11 +16,12 @@ export type EditorEvent =
   | { type: 'layer-list-changed' }
   | { type: 'tileset-changed' }
   | { type: 'zone-changed' }
+  | { type: 'grid-changed' }
   | { type: 'scene-replaced' }
 
 export type EditorListener = (event: EditorEvent) => void
 
-/** 可变图层类型（编辑用） */
+/** 可变瓦片图层（编辑用） */
 interface MutableTileLayer {
   type: 'tile'
   name: string
@@ -30,28 +30,16 @@ interface MutableTileLayer {
   data: number[]
 }
 
-interface MutableObjectLayer {
-  type: 'object'
-  name: string
-  visible: boolean
-  objects: SceneObject[]
-}
-
-interface MutableCollisionLayer {
-  type: 'collision'
-  name: string
-  visible: boolean
-  data: number[]
-}
-
-type MutableLayer = MutableTileLayer | MutableObjectLayer | MutableCollisionLayer
-
 export class EditorState {
   width: number
   height: number
   tileSize: number
   tilesets: TilesetDef[]
-  layers: MutableLayer[]
+  layers: MutableTileLayer[]
+  /** 碰撞网格：0 = 可行走，1 = 不可通过 */
+  collisionGrid: number[]
+  /** 对象网格：0 = 无，1 = 可交互对象 */
+  objectGrid: number[]
   zones: ZoneData[]
 
   /** 当前选中图层索引 */
@@ -63,7 +51,6 @@ export class EditorState {
   set batchEditing(value: boolean) {
     const wasBatching = this._batchEditing
     this._batchEditing = value
-    // 批量结束时触发事件，让监听器 push 一次历史
     if (wasBatching && !value) {
       this.emit({ type: 'layer-changed', layerIndex: this.activeLayerIndex })
     }
@@ -86,6 +73,8 @@ export class EditorState {
     this.tileSize = data.tileSize
     this.tilesets = [...data.tilesets]
     this.layers = data.layers.map(l => this.cloneLayer(l))
+    this.collisionGrid = [...data.collisionGrid]
+    this.objectGrid = [...data.objectGrid]
     this.zones = [...data.zones]
   }
 
@@ -96,6 +85,8 @@ export class EditorState {
     this.tileSize = data.tileSize
     this.tilesets = [...data.tilesets]
     this.layers = data.layers.map(l => this.cloneLayer(l))
+    this.collisionGrid = [...data.collisionGrid]
+    this.objectGrid = [...data.objectGrid]
     this.zones = [...data.zones]
     if (this.activeLayerIndex >= this.layers.length) {
       this.activeLayerIndex = Math.max(0, this.layers.length - 1)
@@ -118,7 +109,7 @@ export class EditorState {
 
   // ====== 图层操作 ======
 
-  get activeLayer(): MutableLayer | undefined {
+  get activeLayer(): MutableTileLayer | undefined {
     return this.layers[this.activeLayerIndex]
   }
 
@@ -131,17 +122,6 @@ export class EditorState {
   addTileLayer(name: string): void {
     const data = new Array<number>(this.width * this.height).fill(0)
     this.layers.push({ type: 'tile', name, visible: true, opacity: 1, data })
-    this.emit({ type: 'layer-list-changed' })
-  }
-
-  addObjectLayer(name: string): void {
-    this.layers.push({ type: 'object', name, visible: true, objects: [] })
-    this.emit({ type: 'layer-list-changed' })
-  }
-
-  addCollisionLayer(name: string): void {
-    const data = new Array<number>(this.width * this.height).fill(0)
-    this.layers.push({ type: 'collision', name, visible: false, data })
     this.emit({ type: 'layer-list-changed' })
   }
 
@@ -161,20 +141,9 @@ export class EditorState {
     this.emit({ type: 'layer-changed', layerIndex: index })
   }
 
-  moveLayer(fromIndex: number, toIndex: number): void {
-    if (fromIndex < 0 || fromIndex >= this.layers.length) return
-    if (toIndex < 0 || toIndex >= this.layers.length) return
-    const [layer] = this.layers.splice(fromIndex, 1)
-    this.layers.splice(toIndex, 0, layer)
-    if (this.activeLayerIndex === fromIndex) {
-      this.activeLayerIndex = toIndex
-    }
-    this.emit({ type: 'layer-list-changed' })
-  }
-
   setLayerOpacity(index: number, opacity: number): void {
     const layer = this.layers[index]
-    if (!layer || layer.type !== 'tile') return
+    if (!layer) return
     layer.opacity = Math.max(0, Math.min(1, opacity))
     this.emit({ type: 'layer-changed', layerIndex: index })
   }
@@ -184,7 +153,7 @@ export class EditorState {
   /** 在当前活跃 TileLayer 上绘制瓦片（支持多瓦片区域） */
   paintTile(tileX: number, tileY: number): void {
     const layer = this.activeLayer
-    if (!layer || layer.type !== 'tile') return
+    if (!layer) return
     if (!this.selectedRegion) return
 
     const { tilesetId, col: rc, row: rr, cols: rcols, rows: rrows } = this.selectedRegion
@@ -209,7 +178,7 @@ export class EditorState {
   /** 批量绘制瓦片（矩形/直线等，只触发一次事件，每个坐标放置完整区域） */
   paintTiles(coords: ReadonlyArray<{ x: number; y: number }>): void {
     const layer = this.activeLayer
-    if (!layer || layer.type !== 'tile') return
+    if (!layer) return
     if (!this.selectedRegion) return
 
     const { tilesetId, col: rc, row: rr, cols: rcols, rows: rrows } = this.selectedRegion
@@ -236,7 +205,7 @@ export class EditorState {
   /** 擦除瓦片 */
   eraseTile(tileX: number, tileY: number): void {
     const layer = this.activeLayer
-    if (!layer || layer.type !== 'tile') return
+    if (!layer) return
 
     if (tileX < 0 || tileX >= this.width || tileY < 0 || tileY >= this.height) return
     const idx = tileY * this.width + tileX
@@ -247,7 +216,7 @@ export class EditorState {
   /** 油漆桶填充（使用区域左上角瓦片） */
   fillTiles(startX: number, startY: number): void {
     const layer = this.activeLayer
-    if (!layer || layer.type !== 'tile') return
+    if (!layer) return
     if (!this.selectedRegion) return
 
     const { tilesetId, col: rc, row: rr } = this.selectedRegion
@@ -292,51 +261,32 @@ export class EditorState {
     this.emit({ type: 'layer-changed', layerIndex: this.activeLayerIndex })
   }
 
-  // ====== 碰撞操作 ======
+  // ====== 碰撞网格操作 ======
 
-  /** 绘制碰撞（1=可行走） */
-  paintCollision(tileX: number, tileY: number, walkable: boolean): void {
-    const layer = this.activeLayer
-    if (!layer || layer.type !== 'collision') return
-
+  /** 设置碰撞标记（blocked = true 表示不可通过） */
+  setCollision(tileX: number, tileY: number, blocked: boolean): void {
     if (tileX < 0 || tileX >= this.width || tileY < 0 || tileY >= this.height) return
     const idx = tileY * this.width + tileX
-    layer.data[idx] = walkable ? 1 : 0
-    this.emit({ type: 'layer-changed', layerIndex: this.activeLayerIndex })
+    this.collisionGrid[idx] = blocked ? 1 : 0
+    this.emit({ type: 'grid-changed' })
   }
 
-  // ====== 对象操作 ======
+  // ====== 对象网格操作 ======
 
-  /** 向当前活跃 ObjectLayer 添加对象 */
-  addObject(obj: SceneObject): void {
-    const layer = this.activeLayer
-    if (!layer || layer.type !== 'object') return
-    layer.objects.push(obj)
-    this.emit({ type: 'layer-changed', layerIndex: this.activeLayerIndex })
+  /** 切换对象标记 */
+  toggleObject(tileX: number, tileY: number): void {
+    if (tileX < 0 || tileX >= this.width || tileY < 0 || tileY >= this.height) return
+    const idx = tileY * this.width + tileX
+    this.objectGrid[idx] = this.objectGrid[idx] === 1 ? 0 : 1
+    this.emit({ type: 'grid-changed' })
   }
 
-  /** 移除对象 */
-  removeObject(objectId: string): void {
-    const layer = this.activeLayer
-    if (!layer || layer.type !== 'object') return
-    const idx = layer.objects.findIndex(o => o.id === objectId)
-    if (idx >= 0) {
-      layer.objects.splice(idx, 1)
-      this.emit({ type: 'layer-changed', layerIndex: this.activeLayerIndex })
-    }
-  }
-
-  /** 更新对象属性 */
-  updateObject(objectId: string, changes: Partial<SceneObject>): void {
-    for (const layer of this.layers) {
-      if (layer.type !== 'object') continue
-      const idx = layer.objects.findIndex(o => o.id === objectId)
-      if (idx >= 0) {
-        layer.objects[idx] = { ...layer.objects[idx], ...changes }
-        this.emit({ type: 'layer-changed', layerIndex: this.layers.indexOf(layer) })
-        return
-      }
-    }
+  /** 设置对象标记 */
+  setObject(tileX: number, tileY: number, hasObject: boolean): void {
+    if (tileX < 0 || tileX >= this.width || tileY < 0 || tileY >= this.height) return
+    const idx = tileY * this.width + tileX
+    this.objectGrid[idx] = hasObject ? 1 : 0
+    this.emit({ type: 'grid-changed' })
   }
 
   // ====== 区域操作 ======
@@ -382,31 +332,19 @@ export class EditorState {
       tileSize: this.tileSize,
       tilesets: [...this.tilesets],
       layers: this.layers.map(l => this.freezeLayer(l)),
+      collisionGrid: [...this.collisionGrid],
+      objectGrid: [...this.objectGrid],
       zones: [...this.zones],
     }
   }
 
   // ====== 私有方法 ======
 
-  private cloneLayer(layer: Layer): MutableLayer {
-    switch (layer.type) {
-      case 'tile':
-        return { type: 'tile', name: layer.name, visible: layer.visible, opacity: layer.opacity, data: [...layer.data] }
-      case 'object':
-        return { type: 'object', name: layer.name, visible: layer.visible, objects: [...layer.objects] }
-      case 'collision':
-        return { type: 'collision', name: layer.name, visible: layer.visible, data: [...layer.data] }
-    }
+  private cloneLayer(layer: TileLayer): MutableTileLayer {
+    return { type: 'tile', name: layer.name, visible: layer.visible, opacity: layer.opacity, data: [...layer.data] }
   }
 
-  private freezeLayer(layer: MutableLayer): Layer {
-    switch (layer.type) {
-      case 'tile':
-        return { type: 'tile', name: layer.name, visible: layer.visible, opacity: layer.opacity, data: [...layer.data] }
-      case 'object':
-        return { type: 'object', name: layer.name, visible: layer.visible, objects: [...layer.objects] }
-      case 'collision':
-        return { type: 'collision', name: layer.name, visible: layer.visible, data: [...layer.data] }
-    }
+  private freezeLayer(layer: MutableTileLayer): TileLayer {
+    return { type: 'tile', name: layer.name, visible: layer.visible, opacity: layer.opacity, data: [...layer.data] }
   }
 }

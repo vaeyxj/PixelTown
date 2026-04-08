@@ -1,12 +1,12 @@
 /**
  * 瓦片集面板 — 显示所有瓦片集的瓦片网格
- * 支持单击选择单个瓦片、拖拽框选矩形区域
+ * 支持：滚轮缩放、中键/空格拖拽平移、拖拽框选矩形区域
  */
 import { useRef, useEffect, useState, useCallback } from 'react'
 import type { TilesetDef } from '../../game/editor/types'
 import type { LoadedScene } from '../../game/editor/sceneLoader'
 
-/** 选中区域：tilesetId + 起始列行 + 区域尺寸 */
+/** 选中区域 */
 interface SelectedRegion {
   tilesetId: string
   col: number
@@ -77,67 +77,144 @@ interface TileGridProps {
   readonly onSelectRegion: (tilesetId: string, col: number, row: number, cols: number, rows: number) => void
 }
 
-/** 单个瓦片集的瓦片网格（Canvas 渲染），支持拖拽框选 */
+const BASE_CELL = 16
+const MIN_ZOOM = 0.5
+const MAX_ZOOM = 6
+
+/** 单个瓦片集的瓦片网格，支持缩放、平移、拖拽框选 */
 function TileGrid({ tileset, scene, selectedRegion, onSelectRegion }: TileGridProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const loaded = scene.tilesets.get(tileset.id)
 
   const displayCols = tileset.columns
-  const rows = Math.ceil(tileset.tileCount / displayCols)
-  const cellSize = 24
-  const canvasW = displayCols * cellSize
-  const canvasH = rows * cellSize
+  const totalRows = Math.ceil(tileset.tileCount / displayCols)
 
-  // 拖拽状态
+  // 视图状态
+  const viewRef = useRef({ zoom: 2, panX: 0, panY: 0 })
+  const [viewTick, setViewTick] = useState(0)
+  const bumpView = useCallback(() => setViewTick(n => n + 1), [])
+
+  // 拖拽框选
   const dragRef = useRef<{ startCol: number; startRow: number; dragging: boolean }>({
     startCol: 0, startRow: 0, dragging: false,
   })
-  // 实时拖拽预览区域（用于渲染高亮）
   const [dragPreview, setDragPreview] = useState<{ col: number; row: number; cols: number; rows: number } | null>(null)
 
-  // 从鼠标事件计算网格坐标
-  const getGridPos = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = e.currentTarget
+  // 平移状态
+  const panRef = useRef<{ panning: boolean; lastX: number; lastY: number }>({
+    panning: false, lastX: 0, lastY: 0,
+  })
+  const spaceRef = useRef(false)
+
+  // 空格键监听（用于空格+拖拽平移）
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat) spaceRef.current = true
+    }
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') spaceRef.current = false
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
+  }, [])
+
+  /** 像素坐标 → 网格坐标 */
+  const toGrid = useCallback((clientX: number, clientY: number) => {
+    const canvas = canvasRef.current
+    if (!canvas) return { col: 0, row: 0 }
     const rect = canvas.getBoundingClientRect()
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
-    const x = (e.clientX - rect.left) * scaleX
-    const y = (e.clientY - rect.top) * scaleY
-    const col = Math.max(0, Math.min(displayCols - 1, Math.floor(x / cellSize)))
-    const row = Math.max(0, Math.min(rows - 1, Math.floor(y / cellSize)))
+    const { zoom, panX, panY } = viewRef.current
+    const cellSize = BASE_CELL * zoom
+    const worldX = (clientX - rect.left) - panX
+    const worldY = (clientY - rect.top) - panY
+    const col = Math.max(0, Math.min(displayCols - 1, Math.floor(worldX / cellSize)))
+    const row = Math.max(0, Math.min(totalRows - 1, Math.floor(worldY / cellSize)))
     return { col, row }
-  }, [displayCols, rows, cellSize])
+  }, [displayCols, totalRows])
 
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0) return
-    const { col, row } = getGridPos(e)
-    dragRef.current = { startCol: col, startRow: row, dragging: true }
-    setDragPreview({ col, row, cols: 1, rows: 1 })
-  }, [getGridPos])
+  // 滚轮缩放（以鼠标位置为中心）
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault()
+    const v = viewRef.current
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const mx = e.clientX - rect.left
+    const my = e.clientY - rect.top
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!dragRef.current.dragging) return
-    const { col, row } = getGridPos(e)
-    const { startCol, startRow } = dragRef.current
-    const minCol = Math.min(startCol, col)
-    const minRow = Math.min(startRow, row)
-    const maxCol = Math.max(startCol, col)
-    const maxRow = Math.max(startRow, row)
-    setDragPreview({ col: minCol, row: minRow, cols: maxCol - minCol + 1, rows: maxRow - minRow + 1 })
-  }, [getGridPos])
+    const oldZoom = v.zoom
+    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
+    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldZoom * factor))
 
-  const handleMouseUp = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    // 以鼠标位置为中心缩放
+    v.panX = mx - (mx - v.panX) * (newZoom / oldZoom)
+    v.panY = my - (my - v.panY) * (newZoom / oldZoom)
+    v.zoom = newZoom
+    bumpView()
+  }, [bumpView])
+
+  // 鼠标按下：中键平移 / 空格+左键平移 / 左键框选
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button === 1 || (e.button === 0 && spaceRef.current)) {
+      // 平移
+      e.preventDefault()
+      panRef.current = { panning: true, lastX: e.clientX, lastY: e.clientY }
+      return
+    }
+    if (e.button === 0) {
+      // 框选
+      const { col, row } = toGrid(e.clientX, e.clientY)
+      dragRef.current = { startCol: col, startRow: row, dragging: true }
+      setDragPreview({ col, row, cols: 1, rows: 1 })
+    }
+  }, [toGrid])
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    // 平移
+    if (panRef.current.panning) {
+      const dx = e.clientX - panRef.current.lastX
+      const dy = e.clientY - panRef.current.lastY
+      panRef.current.lastX = e.clientX
+      panRef.current.lastY = e.clientY
+      viewRef.current.panX += dx
+      viewRef.current.panY += dy
+      bumpView()
+      return
+    }
+    // 框选
+    if (dragRef.current.dragging) {
+      const { col, row } = toGrid(e.clientX, e.clientY)
+      const { startCol, startRow } = dragRef.current
+      const minCol = Math.min(startCol, col)
+      const minRow = Math.min(startRow, row)
+      setDragPreview({
+        col: minCol,
+        row: minRow,
+        cols: Math.max(startCol, col) - minCol + 1,
+        rows: Math.max(startRow, row) - minRow + 1,
+      })
+    }
+  }, [toGrid, bumpView])
+
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    if (panRef.current.panning) {
+      panRef.current.panning = false
+      return
+    }
     if (!dragRef.current.dragging) return
     dragRef.current.dragging = false
 
-    const { col, row } = getGridPos(e)
+    const { col, row } = toGrid(e.clientX, e.clientY)
     const { startCol, startRow } = dragRef.current
     const minCol = Math.min(startCol, col)
     const minRow = Math.min(startRow, row)
     const maxCol = Math.max(startCol, col)
     const maxRow = Math.max(startRow, row)
-
-    // 验证区域内的瓦片都合法
     const regionCols = maxCol - minCol + 1
     const regionRows = maxRow - minRow + 1
     const lastTileIndex = maxRow * displayCols + maxCol
@@ -145,86 +222,148 @@ function TileGrid({ tileset, scene, selectedRegion, onSelectRegion }: TileGridPr
       onSelectRegion(tileset.id, minCol, minRow, regionCols, regionRows)
     }
     setDragPreview(null)
-  }, [getGridPos, displayCols, tileset, onSelectRegion])
+  }, [toGrid, displayCols, tileset, onSelectRegion])
 
   const handleMouseLeave = useCallback(() => {
+    panRef.current.panning = false
     if (dragRef.current.dragging) {
       dragRef.current.dragging = false
       setDragPreview(null)
     }
   }, [])
 
-  // 确定高亮区域：拖拽预览优先，否则用已选区域
+  // 高亮区域
   const highlight = dragPreview ??
     (selectedRegion?.tilesetId === tileset.id ? selectedRegion : null)
 
+  // 渲染
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !loaded) return
+    const container = containerRef.current
+    if (!canvas || !container || !loaded) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    ctx.clearRect(0, 0, canvasW, canvasH)
-    ctx.imageSmoothingEnabled = false
+    const w = container.clientWidth
+    const h = container.clientHeight
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = w * dpr
+    canvas.height = h * dpr
+    canvas.style.width = `${w}px`
+    canvas.style.height = `${h}px`
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    for (let i = 0; i < tileset.tileCount; i++) {
-      const col = i % displayCols
-      const row = Math.floor(i / displayCols)
-      const dx = col * cellSize
-      const dy = row * cellSize
+    const { zoom, panX, panY } = viewRef.current
+    const cellSize = BASE_CELL * zoom
 
-      // 棋盘背景
-      const isLight = (col + row) % 2 === 0
-      ctx.fillStyle = isLight ? '#2a2a3a' : '#222233'
-      ctx.fillRect(dx, dy, cellSize, cellSize)
+    ctx.clearRect(0, 0, w, h)
 
-      // 瓦片纹理
-      const texture = loaded.textures[i]
-      if (texture && texture.source?.resource instanceof HTMLImageElement) {
-        const frame = texture.frame
-        ctx.drawImage(
-          texture.source.resource,
-          frame.x, frame.y, frame.width, frame.height,
-          dx + 1, dy + 1, cellSize - 2, cellSize - 2,
-        )
+    // 只渲染可见范围内的瓦片
+    const startCol = Math.max(0, Math.floor(-panX / cellSize))
+    const startRow = Math.max(0, Math.floor(-panY / cellSize))
+    const endCol = Math.min(displayCols, Math.ceil((w - panX) / cellSize))
+    const endRow = Math.min(totalRows, Math.ceil((h - panY) / cellSize))
+
+    for (let row = startRow; row < endRow; row++) {
+      for (let col = startCol; col < endCol; col++) {
+        const i = row * displayCols + col
+        if (i >= tileset.tileCount) continue
+
+        const dx = col * cellSize + panX
+        const dy = row * cellSize + panY
+
+        // 棋盘背景
+        ctx.fillStyle = (col + row) % 2 === 0 ? '#2a2a3a' : '#222233'
+        ctx.fillRect(dx, dy, cellSize, cellSize)
+
+        // 瓦片纹理
+        const texture = loaded.textures[i]
+        if (texture && texture.source?.resource instanceof HTMLImageElement) {
+          const frame = texture.frame
+          ctx.imageSmoothingEnabled = false
+          ctx.drawImage(
+            texture.source.resource,
+            frame.x, frame.y, frame.width, frame.height,
+            dx + 0.5, dy + 0.5, cellSize - 1, cellSize - 1,
+          )
+        }
       }
     }
 
-    // 选中区域高亮
+    // 网格线（缩放足够大时）
+    if (zoom >= 1.5) {
+      ctx.strokeStyle = 'rgba(100,100,140,0.2)'
+      ctx.lineWidth = 0.5
+      for (let col = startCol; col <= endCol; col++) {
+        const x = col * cellSize + panX
+        ctx.beginPath(); ctx.moveTo(x, Math.max(0, panY)); ctx.lineTo(x, Math.min(h, totalRows * cellSize + panY)); ctx.stroke()
+      }
+      for (let row = startRow; row <= endRow; row++) {
+        const y = row * cellSize + panY
+        ctx.beginPath(); ctx.moveTo(Math.max(0, panX), y); ctx.lineTo(Math.min(w, displayCols * cellSize + panX), y); ctx.stroke()
+      }
+    }
+
+    // 选中高亮
     if (highlight) {
-      const hx = highlight.col * cellSize
-      const hy = highlight.row * cellSize
+      const hx = highlight.col * cellSize + panX
+      const hy = highlight.row * cellSize + panY
       const hw = highlight.cols * cellSize
       const hh = highlight.rows * cellSize
-
-      // 半透明填充
       ctx.fillStyle = 'rgba(74, 154, 245, 0.2)'
       ctx.fillRect(hx, hy, hw, hh)
-
-      // 边框
       ctx.strokeStyle = '#4a9af5'
       ctx.lineWidth = 2
       ctx.strokeRect(hx + 1, hy + 1, hw - 2, hh - 2)
     }
-  }, [tileset, loaded, highlight, canvasW, canvasH, displayCols, cellSize])
+  }, [tileset, loaded, highlight, displayCols, totalRows, viewTick])
+
+  // 容器 resize 监听
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const ro = new ResizeObserver(() => bumpView())
+    ro.observe(container)
+    return () => ro.disconnect()
+  }, [bumpView])
 
   return (
-    <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+    <div
+      ref={containerRef}
+      style={{
+        width: '100%',
+        height: Math.min(280, totalRows * BASE_CELL * 2 + 8),
+        position: 'relative',
+        overflow: 'hidden',
+        border: '1px solid #2a2a4a',
+      }}
+    >
       <canvas
         ref={canvasRef}
-        width={canvasW}
-        height={canvasH}
+        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
+        onContextMenu={e => e.preventDefault()}
         style={{
           display: 'block',
           imageRendering: 'pixelated',
-          cursor: 'crosshair',
-          border: '1px solid #2a2a4a',
+          cursor: spaceRef.current || panRef.current.panning ? 'grab' : 'crosshair',
         }}
       />
+      {/* 缩放指示 */}
+      <span style={{
+        position: 'absolute',
+        bottom: 2,
+        right: 4,
+        fontSize: 9,
+        color: '#4a4a6a',
+        fontFamily: 'monospace',
+        pointerEvents: 'none',
+      }}>
+        {Math.round(viewRef.current.zoom * 100)}%
+      </span>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 /**
- * 碰撞适配器 — 从 SceneData 的 CollisionLayer 生成运行时碰撞网格
+ * 碰撞适配器 — 从 SceneData.collisionGrid 生成运行时碰撞网格
  */
 import type { SceneData, CollisionGrid } from './types'
 
@@ -7,18 +7,11 @@ import type { SceneData, CollisionGrid } from './types'
 export function extractCollisionGrid(scene: SceneData): CollisionGrid {
   const grid = new Uint8Array(scene.width * scene.height)
 
-  // 查找碰撞图层
-  const collisionLayer = scene.layers.find((l) => l.type === 'collision')
-  if (!collisionLayer || collisionLayer.type !== 'collision') {
-    // 无碰撞层时默认全部可行走
-    grid.fill(1)
-    return grid
-  }
-
-  // 填充碰撞数据
-  const len = Math.min(collisionLayer.data.length, grid.length)
+  // collisionGrid: 1 = 不可通过，0 = 可行走
+  // CollisionGrid (运行时): 1 = 可行走，0 = 不可行走
+  const len = Math.min(scene.collisionGrid.length, grid.length)
   for (let i = 0; i < len; i++) {
-    grid[i] = collisionLayer.data[i] === 1 ? 1 : 0
+    grid[i] = scene.collisionGrid[i] === 1 ? 0 : 1
   }
 
   return grid
