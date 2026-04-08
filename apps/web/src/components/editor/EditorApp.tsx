@@ -80,7 +80,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
   const createTool = useCallback((toolType: ToolType) => {
     const vp = viewportRef.current
     const es = editorStateRef.current
-    const sc = editorStateRef.current ? scene : null
+    const sc = sceneRef.current
     if (!vp || !es) return
 
     switch (toolType) {
@@ -124,7 +124,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
         }))
         break
     }
-  }, [scene])
+  }, [])
 
   /** 切换工具 + 自动切到对应图层类型 */
   const switchTool = useCallback((toolType: ToolType) => {
@@ -264,7 +264,10 @@ export function EditorApp({ onExit }: EditorAppProps) {
             const currentTilesets = sceneRef.current?.tilesets ?? new Map()
             const updatedScene: LoadedScene = { data: updatedData, tilesets: currentTilesets }
             viewport.reloadScene(updatedScene)
-            historyRef.current.push(updatedData)
+            // scene-replaced 来自 undo/redo/load，不重复 push 历史
+            if (event.type !== 'scene-replaced') {
+              historyRef.current.push(updatedData)
+            }
             refresh()
           }
         })
@@ -301,34 +304,26 @@ export function EditorApp({ onExit }: EditorAppProps) {
     }
   }, [refresh])
 
-  // 撤销/重做
+  // 撤销/重做（就地替换数据，保留对象引用和监听器）
   const handleUndo = useCallback(() => {
     const es = editorStateRef.current
     const vp = viewportRef.current
-    if (!es || !vp || !scene) return
+    if (!es || !vp) return
     const prev = historyRef.current.undo(es.toSceneData())
     if (!prev) return
-    const restored = new EditorState(prev)
-    editorStateRef.current = restored
-    setEditorState(restored)
-    const updatedScene: LoadedScene = { data: prev, tilesets: scene.tilesets }
-    vp.reloadScene(updatedScene)
+    es.loadSceneData(prev)
     refresh()
-  }, [scene, refresh])
+  }, [refresh])
 
   const handleRedo = useCallback(() => {
     const es = editorStateRef.current
     const vp = viewportRef.current
-    if (!es || !vp || !scene) return
+    if (!es || !vp) return
     const next = historyRef.current.redo(es.toSceneData())
     if (!next) return
-    const restored = new EditorState(next)
-    editorStateRef.current = restored
-    setEditorState(restored)
-    const updatedScene: LoadedScene = { data: next, tilesets: scene.tilesets }
-    vp.reloadScene(updatedScene)
+    es.loadSceneData(next)
     refresh()
-  }, [scene, refresh])
+  }, [refresh])
 
   // 快捷键
   useEffect(() => {
@@ -389,9 +384,10 @@ export function EditorApp({ onExit }: EditorAppProps) {
   // 素材导入：从文件直接加载纹理 + 自动创建 tile 图层
   const handleImportTileset = useCallback(async (tileset: TilesetDef, imageFile: File) => {
     const es = editorStateRef.current
-    if (!es || !scene) return
+    const currentScene = sceneRef.current
+    if (!es || !currentScene) return
     const loaded = await loadTilesetFromBlob(imageFile, tileset)
-    const newTilesets = new Map(scene.tilesets)
+    const newTilesets = new Map(currentScene.tilesets)
     newTilesets.set(tileset.id, loaded)
     es.addTileset(tileset)
 
@@ -413,7 +409,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
     setActiveTool('brush')
     createTool('brush')
     refresh()
-  }, [scene, createTool, refresh])
+  }, [createTool, refresh])
 
   // 加载场景文件
   const handleLoad = useCallback(() => {
@@ -426,36 +422,18 @@ export function EditorApp({ onExit }: EditorAppProps) {
       try {
         const text = await file.text()
         const data = JSON.parse(text) as import('../../game/editor/types').SceneData
-        const es = new EditorState(data)
-        editorStateRef.current = es
-        setEditorState(es)
+        const es = editorStateRef.current
+        if (!es) return
+        es.loadSceneData(data)
         historyRef.current.clear()
         historyRef.current.push(data)
-
-        const vp = viewportRef.current
-        if (vp && scene) {
-          const updatedScene: LoadedScene = { data, tilesets: scene.tilesets }
-          vp.reloadScene(updatedScene)
-
-          // 重新绑定变更监听
-          es.on((event) => {
-            if (event.type === 'layer-changed' || event.type === 'layer-list-changed' || event.type === 'scene-replaced') {
-              const updatedData = es.toSceneData()
-              const currentTilesets = sceneRef.current?.tilesets ?? new Map()
-              const reloadScene: LoadedScene = { data: updatedData, tilesets: currentTilesets }
-              vp.reloadScene(reloadScene)
-              historyRef.current.push(updatedData)
-              refresh()
-            }
-          })
-        }
         refresh()
       } catch {
         // 解析失败
       }
     }
     input.click()
-  }, [scene, refresh])
+  }, [refresh])
 
   // 导出保存
   const handleSave = useCallback(() => {

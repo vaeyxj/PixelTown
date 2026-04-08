@@ -76,6 +76,20 @@ export class EditorState {
     this.zones = [...data.zones]
   }
 
+  /** 就地替换场景数据（保留对象引用、监听器、selectedRegion） */
+  loadSceneData(data: SceneData): void {
+    this.width = data.width
+    this.height = data.height
+    this.tileSize = data.tileSize
+    this.tilesets = [...data.tilesets]
+    this.layers = data.layers.map(l => this.cloneLayer(l))
+    this.zones = [...data.zones]
+    if (this.activeLayerIndex >= this.layers.length) {
+      this.activeLayerIndex = Math.max(0, this.layers.length - 1)
+    }
+    this.emit({ type: 'scene-replaced' })
+  }
+
   // ====== 监听 ======
 
   on(listener: EditorListener): () => void {
