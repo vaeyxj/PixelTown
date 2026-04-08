@@ -360,7 +360,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
     refresh()
   }, [createTool, refresh])
 
-  // 加载场景文件
+  // 加载场景文件（含瓦片集图片恢复）
   const handleLoad = useCallback(() => {
     const input = document.createElement('input')
     input.type = 'file'
@@ -371,9 +371,8 @@ export function EditorApp({ onExit }: EditorAppProps) {
       try {
         const text = await file.text()
         const raw = JSON.parse(text) as Record<string, unknown>
-        // 兼容旧格式：如果没有 collisionGrid/objectGrid 则初始化
-        const width = (raw.width as number) ?? 96
-        const height = (raw.height as number) ?? 56
+        const width = (raw.width as number) ?? 300
+        const height = (raw.height as number) ?? 180
         const gridSize = width * height
         const data: SceneData = {
           ...(raw as unknown as SceneData),
@@ -383,9 +382,43 @@ export function EditorApp({ onExit }: EditorAppProps) {
             (l: unknown) => (l as { type: string }).type === 'tile'
           ) as SceneData['layers'],
         }
+
+        // 从 JSON 中恢复瓦片集图片
+        const savedImages = (raw.tilesetImages ?? {}) as Record<string, string>
+        const newTilesets = new Map(sceneRef.current?.tilesets ?? new Map())
+        await Promise.all(
+          data.tilesets.map(async (def) => {
+            const dataUrl = savedImages[def.id]
+            if (!dataUrl) return
+            // 存入 ref 供后续"应用"使用
+            tilesetImagesRef.current.set(def.id, dataUrl)
+            // 从 data URL 恢复纹理
+            const img = new Image()
+            img.src = dataUrl
+            await img.decode()
+            const { ImageSource: IS, Texture: Tex, Rectangle: Rect } = await import('pixi.js')
+            const source = new IS({ resource: img })
+            const baseTex = new Tex({ source })
+            const textures: import('pixi.js').Texture[] = []
+            for (let i = 0; i < def.tileCount; i++) {
+              const col = i % def.columns
+              const row = Math.floor(i / def.columns)
+              const frame = new Rect(col * def.tileWidth, row * def.tileHeight, def.tileWidth, def.tileHeight)
+              textures.push(new Tex({ source: baseTex.source, frame }))
+            }
+            newTilesets.set(def.id, { def, textures })
+          }),
+        )
+
         const es = editorStateRef.current
         if (!es) return
         es.loadSceneData(data)
+
+        const updatedScene: LoadedScene = { data, tilesets: newTilesets }
+        setScene(updatedScene)
+        sceneRef.current = updatedScene
+        viewportRef.current?.reloadScene(updatedScene)
+
         historyRef.current.clear()
         historyRef.current.push(data)
         refresh()
@@ -405,11 +438,15 @@ export function EditorApp({ onExit }: EditorAppProps) {
     window.location.reload()
   }, [editorState])
 
-  // 导出保存
+  // 导出保存（含瓦片集图片 data URL）
   const handleSave = useCallback(() => {
     if (!editorState) return
     const data = editorState.toSceneData()
-    const json = JSON.stringify(data, null, 2)
+    const saveObj = {
+      ...data,
+      tilesetImages: Object.fromEntries(tilesetImagesRef.current),
+    }
+    const json = JSON.stringify(saveObj, null, 2)
     const blob = new Blob([json], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

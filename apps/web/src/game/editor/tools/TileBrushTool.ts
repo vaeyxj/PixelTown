@@ -82,71 +82,141 @@ export class TileBrushTool implements EditorTool {
 /**
  * 瓦片橡皮擦工具
  */
+/**
+ * 橡皮擦工具 — 拖拽矩形批量擦除 tile + 碰撞 + 对象
+ * 按下起点 → 拖拽显示红色矩形预览 → 松开批量擦除
+ */
 export class TileEraserTool implements EditorTool {
   readonly name = '橡皮擦'
   readonly icon = '🧹'
 
   private state: EditorState
-  private erasing = false
+  private dragging = false
+  private startTX = 0
+  private startTY = 0
+  private endTX = 0
+  private endTY = 0
   private highlight: Graphics | null = null
+  private gridOverlay: Graphics | null = null
 
   constructor(state: EditorState) {
     this.state = state
   }
 
   activate(toolOverlay: Container): void {
+    this.gridOverlay = new Graphics()
+    this.gridOverlay.label = 'eraser-grid-overlay'
+    toolOverlay.addChild(this.gridOverlay)
+
     this.highlight = new Graphics()
     toolOverlay.addChild(this.highlight)
+
+    this.redrawGridOverlay()
   }
 
   deactivate(): void {
-    this.erasing = false
+    this.dragging = false
     this.highlight = null
+    this.gridOverlay = null
   }
 
   onPointerDown(_e: FederatedPointerEvent, world: WorldPoint): void {
-    this.erasing = true
-    this.state.batchEditing = true
-    this.eraseAt(world)
+    const ts = this.state.tileSize
+    this.startTX = Math.floor(world.x / ts)
+    this.startTY = Math.floor(world.y / ts)
+    this.endTX = this.startTX
+    this.endTY = this.startTY
+    this.dragging = true
+    this.drawRect()
   }
 
   onPointerMove(_e: FederatedPointerEvent, world: WorldPoint): void {
-    this.updateHighlight(world)
-    if (this.erasing) {
-      this.eraseAt(world)
+    const ts = this.state.tileSize
+    const tx = Math.floor(world.x / ts)
+    const ty = Math.floor(world.y / ts)
+    if (this.dragging) {
+      this.endTX = tx
+      this.endTY = ty
+      this.drawRect()
+    } else {
+      // 非拖拽时显示单格光标
+      this.drawCursor(tx, ty)
     }
   }
 
   onPointerUp(_e: FederatedPointerEvent, _world: WorldPoint): void {
-    this.erasing = false
+    if (!this.dragging) return
+    this.dragging = false
+
+    const minX = Math.min(this.startTX, this.endTX)
+    const minY = Math.min(this.startTY, this.endTY)
+    const maxX = Math.max(this.startTX, this.endTX)
+    const maxY = Math.max(this.startTY, this.endTY)
+
+    this.state.batchEditing = true
+    for (let ty = minY; ty <= maxY; ty++) {
+      for (let tx = minX; tx <= maxX; tx++) {
+        this.state.eraseTile(tx, ty)
+        this.state.setCollision(tx, ty, false)
+        this.state.setObject(tx, ty, false)
+      }
+    }
     this.state.batchEditing = false
+
+    if (this.highlight) this.highlight.clear()
+    this.redrawGridOverlay()
   }
 
   onPointerLeave(): void {
-    if (this.highlight) {
-      this.highlight.clear()
-    }
+    if (this.highlight) this.highlight.clear()
   }
 
-  private eraseAt(world: WorldPoint): void {
-    const ts = this.state.tileSize
-    const tx = Math.floor(world.x / ts)
-    const ty = Math.floor(world.y / ts)
-    this.state.eraseTile(tx, ty)
-    // 同时擦除碰撞和对象标记
-    this.state.setCollision(tx, ty, false)
-    this.state.setObject(tx, ty, false)
-  }
-
-  private updateHighlight(world: WorldPoint): void {
+  /** 绘制拖拽矩形预览 */
+  private drawRect(): void {
     if (!this.highlight) return
     const ts = this.state.tileSize
-    const tx = Math.floor(world.x / ts)
-    const ty = Math.floor(world.y / ts)
+    const minX = Math.min(this.startTX, this.endTX)
+    const minY = Math.min(this.startTY, this.endTY)
+    const maxX = Math.max(this.startTX, this.endTX)
+    const maxY = Math.max(this.startTY, this.endTY)
+    const px = minX * ts
+    const py = minY * ts
+    const pw = (maxX - minX + 1) * ts
+    const ph = (maxY - minY + 1) * ts
+    this.highlight.clear()
+    this.highlight.rect(px, py, pw, ph)
+      .fill({ color: 0xff4444, alpha: 0.2 })
+      .stroke({ color: 0xff4444, alpha: 0.8, width: 1 })
+  }
+
+  /** 非拖拽时的单格光标 */
+  private drawCursor(tx: number, ty: number): void {
+    if (!this.highlight) return
+    const ts = this.state.tileSize
     this.highlight.clear()
     this.highlight.rect(tx * ts, ty * ts, ts, ts)
-      .fill({ color: 0xff4444, alpha: 0.3 })
+      .fill({ color: 0xff4444, alpha: 0.15 })
       .stroke({ color: 0xff4444, alpha: 0.6, width: 1 })
+  }
+
+  /** 绘制碰撞（红）和对象（蓝）标记 overlay */
+  private redrawGridOverlay(): void {
+    if (!this.gridOverlay) return
+    const g = this.gridOverlay
+    g.clear()
+    const { width, tileSize, collisionGrid, objectGrid } = this.state
+    for (let i = 0; i < collisionGrid.length; i++) {
+      const tx = i % width
+      const ty = Math.floor(i / width)
+      const px = tx * tileSize
+      const py = ty * tileSize
+      if (collisionGrid[i] === 1) {
+        g.rect(px, py, tileSize, tileSize).fill({ color: 0xff4444, alpha: 0.2 })
+      }
+      if (objectGrid[i] === 1) {
+        g.rect(px, py, tileSize, tileSize).fill({ color: 0x4488ff, alpha: 0.2 })
+      }
+    }
   }
 }
 
