@@ -60,6 +60,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
   const historyRef = useRef<EditorHistory>(new EditorHistory())
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
 
+  const sceneRef = useRef<LoadedScene | null>(null)
   const [leftPanelWidth, setLeftPanelWidth] = useState(200)
   const isDraggingRef = useRef(false)
   const [activeTool, setActiveTool] = useState<ToolType>('select')
@@ -244,6 +245,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
         if (cancelled) return
 
         setScene(loadedScene)
+        sceneRef.current = loadedScene
         const newEditorState = new EditorState(loadedScene.data)
         editorStateRef.current = newEditorState
         setEditorState(newEditorState)
@@ -259,7 +261,8 @@ export function EditorApp({ onExit }: EditorAppProps) {
         newEditorState.on((event) => {
           if (event.type === 'layer-changed' || event.type === 'layer-list-changed' || event.type === 'scene-replaced') {
             const updatedData = newEditorState.toSceneData()
-            const updatedScene: LoadedScene = { data: updatedData, tilesets: loadedScene.tilesets }
+            const currentTilesets = sceneRef.current?.tilesets ?? new Map()
+            const updatedScene: LoadedScene = { data: updatedData, tilesets: currentTilesets }
             viewport.reloadScene(updatedScene)
             historyRef.current.push(updatedData)
             refresh()
@@ -404,6 +407,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
     const updatedData = es.toSceneData()
     const updatedScene: LoadedScene = { data: updatedData, tilesets: newTilesets }
     setScene(updatedScene)
+    sceneRef.current = updatedScene
 
     // 自动切到笔刷
     setActiveTool('brush')
@@ -437,7 +441,8 @@ export function EditorApp({ onExit }: EditorAppProps) {
           es.on((event) => {
             if (event.type === 'layer-changed' || event.type === 'layer-list-changed' || event.type === 'scene-replaced') {
               const updatedData = es.toSceneData()
-              const reloadScene: LoadedScene = { data: updatedData, tilesets: scene.tilesets }
+              const currentTilesets = sceneRef.current?.tilesets ?? new Map()
+              const reloadScene: LoadedScene = { data: updatedData, tilesets: currentTilesets }
               vp.reloadScene(reloadScene)
               historyRef.current.push(updatedData)
               refresh()
