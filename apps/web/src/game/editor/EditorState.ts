@@ -56,8 +56,14 @@ export class EditorState {
 
   /** 当前选中图层索引 */
   activeLayerIndex = 0
-  /** 当前选中瓦片（tilesetId + tileIndex） */
-  selectedTile: { tilesetId: string; tileIndex: number } | null = null
+  /** 当前选中瓦片区域（tilesetId + 起始列行 + 区域尺寸） */
+  selectedRegion: {
+    tilesetId: string
+    col: number
+    row: number
+    cols: number
+    rows: number
+  } | null = null
 
   private listeners: Set<EditorListener> = new Set()
 
@@ -148,38 +154,56 @@ export class EditorState {
 
   // ====== 瓦片操作 ======
 
-  /** 在当前活跃 TileLayer 上绘制瓦片 */
+  /** 在当前活跃 TileLayer 上绘制瓦片（支持多瓦片区域） */
   paintTile(tileX: number, tileY: number): void {
     const layer = this.activeLayer
     if (!layer || layer.type !== 'tile') return
-    if (!this.selectedTile) return
+    if (!this.selectedRegion) return
 
-    const { tilesetId, tileIndex } = this.selectedTile
+    const { tilesetId, col: rc, row: rr, cols: rcols, rows: rrows } = this.selectedRegion
     const tsIdx = this.tilesets.findIndex(t => t.id === tilesetId)
     if (tsIdx < 0) return
+    const tsDef = this.tilesets[tsIdx]
 
-    if (tileX < 0 || tileX >= this.width || tileY < 0 || tileY >= this.height) return
-    const idx = tileY * this.width + tileX
-    layer.data[idx] = encodeTile(tsIdx, tileIndex)
-    this.emit({ type: 'layer-changed', layerIndex: this.activeLayerIndex })
+    let changed = false
+    for (let dy = 0; dy < rrows; dy++) {
+      for (let dx = 0; dx < rcols; dx++) {
+        const tx = tileX + dx
+        const ty = tileY + dy
+        if (tx < 0 || tx >= this.width || ty < 0 || ty >= this.height) continue
+        const tileIndex = (rr + dy) * tsDef.columns + (rc + dx)
+        layer.data[ty * this.width + tx] = encodeTile(tsIdx, tileIndex)
+        changed = true
+      }
+    }
+    if (changed) this.emit({ type: 'layer-changed', layerIndex: this.activeLayerIndex })
   }
 
-  /** 批量绘制瓦片（矩形/直线等，只触发一次事件） */
+  /** 批量绘制瓦片（矩形/直线等，只触发一次事件，每个坐标放置完整区域） */
   paintTiles(coords: ReadonlyArray<{ x: number; y: number }>): void {
     const layer = this.activeLayer
     if (!layer || layer.type !== 'tile') return
-    if (!this.selectedTile) return
+    if (!this.selectedRegion) return
 
-    const { tilesetId, tileIndex } = this.selectedTile
+    const { tilesetId, col: rc, row: rr, cols: rcols, rows: rrows } = this.selectedRegion
     const tsIdx = this.tilesets.findIndex(t => t.id === tilesetId)
     if (tsIdx < 0) return
+    const tsDef = this.tilesets[tsIdx]
 
-    const value = encodeTile(tsIdx, tileIndex)
+    let changed = false
     for (const { x, y } of coords) {
-      if (x < 0 || x >= this.width || y < 0 || y >= this.height) continue
-      layer.data[y * this.width + x] = value
+      for (let dy = 0; dy < rrows; dy++) {
+        for (let dx = 0; dx < rcols; dx++) {
+          const tx = x + dx
+          const ty = y + dy
+          if (tx < 0 || tx >= this.width || ty < 0 || ty >= this.height) continue
+          const tileIndex = (rr + dy) * tsDef.columns + (rc + dx)
+          layer.data[ty * this.width + tx] = encodeTile(tsIdx, tileIndex)
+          changed = true
+        }
+      }
     }
-    this.emit({ type: 'layer-changed', layerIndex: this.activeLayerIndex })
+    if (changed) this.emit({ type: 'layer-changed', layerIndex: this.activeLayerIndex })
   }
 
   /** 擦除瓦片 */
@@ -193,18 +217,20 @@ export class EditorState {
     this.emit({ type: 'layer-changed', layerIndex: this.activeLayerIndex })
   }
 
-  /** 油漆桶填充 */
+  /** 油漆桶填充（使用区域左上角瓦片） */
   fillTiles(startX: number, startY: number): void {
     const layer = this.activeLayer
     if (!layer || layer.type !== 'tile') return
-    if (!this.selectedTile) return
+    if (!this.selectedRegion) return
 
-    const { tilesetId, tileIndex } = this.selectedTile
+    const { tilesetId, col: rc, row: rr } = this.selectedRegion
     const tsIdx = this.tilesets.findIndex(t => t.id === tilesetId)
     if (tsIdx < 0) return
+    const tsDef = this.tilesets[tsIdx]
 
     if (startX < 0 || startX >= this.width || startY < 0 || startY >= this.height) return
 
+    const tileIndex = rr * tsDef.columns + rc
     const fillValue = encodeTile(tsIdx, tileIndex)
     const startIdx = startY * this.width + startX
     const targetValue = layer.data[startIdx]

@@ -2,11 +2,12 @@
  * 矩形笔刷工具 — 拖拽绘制矩形区域的瓦片
  * 按下起点 → 拖拽 → 松开终点，填充矩形内所有瓦片
  */
-import { Graphics, Sprite, Texture, Container } from 'pixi.js'
+import { Graphics, Container } from 'pixi.js'
 import type { FederatedPointerEvent } from 'pixi.js'
 import type { EditorTool, WorldPoint } from './BaseTool'
 import type { EditorState } from '../EditorState'
 import type { LoadedScene } from '../sceneLoader'
+import { buildRegionGhost } from './ghostHelper'
 
 export class RectBrushTool implements EditorTool {
   readonly name = '矩形'
@@ -14,9 +15,8 @@ export class RectBrushTool implements EditorTool {
 
   private readonly state: EditorState
   private readonly scene: LoadedScene
-  private overlay: Container | null = null
   private preview: Graphics | null = null
-  private ghost: Sprite | null = null
+  private ghostContainer: Container | null = null
   private dragging = false
   private startTX = 0
   private startTY = 0
@@ -29,20 +29,18 @@ export class RectBrushTool implements EditorTool {
   }
 
   activate(toolOverlay: Container): void {
-    this.overlay = toolOverlay
     this.preview = new Graphics()
-    this.ghost = new Sprite(Texture.WHITE)
-    this.ghost.alpha = 0.4
-    this.ghost.visible = false
+    this.ghostContainer = new Container()
+    this.ghostContainer.alpha = 0.5
+    this.ghostContainer.visible = false
     toolOverlay.addChild(this.preview)
-    toolOverlay.addChild(this.ghost)
+    toolOverlay.addChild(this.ghostContainer)
   }
 
   deactivate(): void {
     this.dragging = false
-    this.overlay = null
     this.preview = null
-    this.ghost = null
+    this.ghostContainer = null
   }
 
   onPointerDown(_e: FederatedPointerEvent, world: WorldPoint): void {
@@ -106,27 +104,18 @@ export class RectBrushTool implements EditorTool {
       .fill({ color: 0x4a9af5, alpha: 0.2 })
       .stroke({ color: 0x4a9af5, alpha: 0.7, width: 1 })
 
-    // 隐藏单格 ghost
-    if (this.ghost) this.ghost.visible = false
+    if (this.ghostContainer) this.ghostContainer.visible = false
   }
 
   private updateGhost(tx: number, ty: number): void {
-    if (!this.ghost) return
-    const { selectedTile, tileSize } = this.state
-    if (!selectedTile) {
-      this.ghost.visible = false
-      return
-    }
-    const loaded = this.scene.tilesets.get(selectedTile.tilesetId)
-    if (!loaded || selectedTile.tileIndex >= loaded.textures.length) {
-      this.ghost.visible = false
-      return
-    }
-    this.ghost.texture = loaded.textures[selectedTile.tileIndex]
-    this.ghost.x = tx * tileSize
-    this.ghost.y = ty * tileSize
-    this.ghost.width = tileSize
-    this.ghost.height = tileSize
-    this.ghost.visible = true
+    if (!this.ghostContainer) return
+    const { selectedRegion, tileSize } = this.state
+
+    const built = buildRegionGhost(this.ghostContainer, selectedRegion, this.state, this.scene)
+    if (!built) return
+
+    this.ghostContainer.x = tx * tileSize
+    this.ghostContainer.y = ty * tileSize
+    this.ghostContainer.visible = true
   }
 }

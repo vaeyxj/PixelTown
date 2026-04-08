@@ -2,11 +2,12 @@
  * 瓦片笔刷工具 — 在 TileLayer 上绘制瓦片
  * 支持单击放置和拖拽连续绘制，移动时显示半透明预览
  */
-import { Container, Graphics, Sprite, Texture } from 'pixi.js'
+import { Container, Graphics } from 'pixi.js'
 import type { FederatedPointerEvent } from 'pixi.js'
 import type { EditorTool, WorldPoint } from './BaseTool'
 import type { EditorState } from '../EditorState'
 import type { LoadedScene } from '../sceneLoader'
+import { buildRegionGhost } from './ghostHelper'
 
 export class TileBrushTool implements EditorTool {
   readonly name = '笔刷'
@@ -14,7 +15,7 @@ export class TileBrushTool implements EditorTool {
 
   private state: EditorState
   private scene: LoadedScene
-  private ghost: Sprite | null = null
+  private ghostContainer: Container | null = null
   private painting = false
 
   constructor(state: EditorState, scene: LoadedScene) {
@@ -23,15 +24,15 @@ export class TileBrushTool implements EditorTool {
   }
 
   activate(toolOverlay: Container): void {
-    this.ghost = new Sprite(Texture.WHITE)
-    this.ghost.alpha = 0.5
-    this.ghost.visible = false
-    toolOverlay.addChild(this.ghost)
+    this.ghostContainer = new Container()
+    this.ghostContainer.alpha = 0.5
+    this.ghostContainer.visible = false
+    toolOverlay.addChild(this.ghostContainer)
   }
 
   deactivate(): void {
     this.painting = false
-    this.ghost = null
+    this.ghostContainer = null
   }
 
   onPointerDown(_e: FederatedPointerEvent, world: WorldPoint): void {
@@ -58,27 +59,17 @@ export class TileBrushTool implements EditorTool {
   }
 
   private updateGhost(world: WorldPoint): void {
-    if (!this.ghost) return
-    const { selectedTile, tileSize } = this.state
-    if (!selectedTile) {
-      this.ghost.visible = false
-      return
-    }
+    if (!this.ghostContainer) return
+    const { selectedRegion, tileSize } = this.state
 
-    const loaded = this.scene.tilesets.get(selectedTile.tilesetId)
-    if (!loaded || selectedTile.tileIndex >= loaded.textures.length) {
-      this.ghost.visible = false
-      return
-    }
+    const built = buildRegionGhost(this.ghostContainer, selectedRegion, this.state, this.scene)
+    if (!built) return
 
     const tx = Math.floor(world.x / tileSize)
     const ty = Math.floor(world.y / tileSize)
-    this.ghost.texture = loaded.textures[selectedTile.tileIndex]
-    this.ghost.x = tx * tileSize
-    this.ghost.y = ty * tileSize
-    this.ghost.width = tileSize
-    this.ghost.height = tileSize
-    this.ghost.visible = true
+    this.ghostContainer.x = tx * tileSize
+    this.ghostContainer.y = ty * tileSize
+    this.ghostContainer.visible = true
   }
 }
 

@@ -36,11 +36,13 @@ export class ObjectPlaceTool implements EditorTool {
   }
 
   onPointerDown(_e: FederatedPointerEvent, world: WorldPoint): void {
-    const { selectedTile, tileSize } = this.state
-    if (!selectedTile) return
+    const { selectedRegion, tileSize } = this.state
+    if (!selectedRegion) return
 
-    const tsDef = this.state.tilesets.find(t => t.id === selectedTile.tilesetId)
+    const tsDef = this.state.tilesets.find(t => t.id === selectedRegion.tilesetId)
     if (!tsDef) return
+
+    const tileIndex = selectedRegion.row * tsDef.columns + selectedRegion.col
 
     // 吸附到网格
     const snapX = Math.floor(world.x / tileSize) * tileSize
@@ -48,16 +50,16 @@ export class ObjectPlaceTool implements EditorTool {
 
     const newObj: SceneObject = {
       id: `obj_${Date.now()}_${objectIdCounter++}`,
-      name: `${tsDef.name}_${selectedTile.tileIndex}`,
+      name: `${tsDef.name}_${tileIndex}`,
       x: snapX,
       y: snapY,
-      width: tsDef.tileWidth,
-      height: tsDef.tileHeight,
+      width: tsDef.tileWidth * selectedRegion.cols,
+      height: tsDef.tileHeight * selectedRegion.rows,
       rotation: 0,
       scaleX: 1,
       scaleY: 1,
-      tilesetId: selectedTile.tilesetId,
-      tileIndex: selectedTile.tileIndex,
+      tilesetId: selectedRegion.tilesetId,
+      tileIndex,
       properties: {},
     }
 
@@ -72,14 +74,21 @@ export class ObjectPlaceTool implements EditorTool {
 
   private updateGhost(world: WorldPoint): void {
     if (!this.ghost) return
-    const { selectedTile, tileSize } = this.state
-    if (!selectedTile) {
+    const { selectedRegion, tileSize } = this.state
+    if (!selectedRegion) {
       this.ghost.visible = false
       return
     }
 
-    const loaded = this.scene.tilesets.get(selectedTile.tilesetId)
-    if (!loaded || selectedTile.tileIndex >= loaded.textures.length) {
+    const loaded = this.scene.tilesets.get(selectedRegion.tilesetId)
+    const tsDef = this.state.tilesets.find(t => t.id === selectedRegion.tilesetId)
+    if (!loaded || !tsDef) {
+      this.ghost.visible = false
+      return
+    }
+
+    const tileIndex = selectedRegion.row * tsDef.columns + selectedRegion.col
+    if (tileIndex >= loaded.textures.length) {
       this.ghost.visible = false
       return
     }
@@ -87,12 +96,11 @@ export class ObjectPlaceTool implements EditorTool {
     const snapX = Math.floor(world.x / tileSize) * tileSize
     const snapY = Math.floor(world.y / tileSize) * tileSize
 
-    this.ghost.texture = loaded.textures[selectedTile.tileIndex]
+    this.ghost.texture = loaded.textures[tileIndex]
     this.ghost.x = snapX
     this.ghost.y = snapY
-    const tsDef = this.state.tilesets.find(t => t.id === selectedTile.tilesetId)
-    this.ghost.width = tsDef?.tileWidth ?? tileSize
-    this.ghost.height = tsDef?.tileHeight ?? tileSize
+    this.ghost.width = tsDef.tileWidth * selectedRegion.cols
+    this.ghost.height = tsDef.tileHeight * selectedRegion.rows
     this.ghost.visible = true
   }
 }

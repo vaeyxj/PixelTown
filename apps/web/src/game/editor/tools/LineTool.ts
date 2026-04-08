@@ -2,11 +2,12 @@
  * 直线工具 — Bresenham 算法在两点之间绘制瓦片直线
  * 按下起点 → 拖拽 → 松开终点，沿直线放置瓦片
  */
-import { Graphics, Sprite, Texture, Container } from 'pixi.js'
+import { Graphics, Container } from 'pixi.js'
 import type { FederatedPointerEvent } from 'pixi.js'
 import type { EditorTool, WorldPoint } from './BaseTool'
 import type { EditorState } from '../EditorState'
 import type { LoadedScene } from '../sceneLoader'
+import { buildRegionGhost } from './ghostHelper'
 
 /** Bresenham 直线算法，返回所有经过的格子坐标 */
 function bresenham(x0: number, y0: number, x1: number, y1: number): { x: number; y: number }[] {
@@ -35,9 +36,8 @@ export class LineTool implements EditorTool {
 
   private readonly state: EditorState
   private readonly scene: LoadedScene
-  private overlay: Container | null = null
   private preview: Graphics | null = null
-  private ghost: Sprite | null = null
+  private ghostContainer: Container | null = null
   private dragging = false
   private startTX = 0
   private startTY = 0
@@ -50,20 +50,18 @@ export class LineTool implements EditorTool {
   }
 
   activate(toolOverlay: Container): void {
-    this.overlay = toolOverlay
     this.preview = new Graphics()
-    this.ghost = new Sprite(Texture.WHITE)
-    this.ghost.alpha = 0.4
-    this.ghost.visible = false
+    this.ghostContainer = new Container()
+    this.ghostContainer.alpha = 0.5
+    this.ghostContainer.visible = false
     toolOverlay.addChild(this.preview)
-    toolOverlay.addChild(this.ghost)
+    toolOverlay.addChild(this.ghostContainer)
   }
 
   deactivate(): void {
     this.dragging = false
-    this.overlay = null
     this.preview = null
-    this.ghost = null
+    this.ghostContainer = null
   }
 
   onPointerDown(_e: FederatedPointerEvent, world: WorldPoint): void {
@@ -117,26 +115,18 @@ export class LineTool implements EditorTool {
       .rect(this.endTX * ts, this.endTY * ts, ts, ts)
       .stroke({ color: 0xf5f54a, alpha: 0.8, width: 1 })
 
-    if (this.ghost) this.ghost.visible = false
+    if (this.ghostContainer) this.ghostContainer.visible = false
   }
 
   private updateGhost(tx: number, ty: number): void {
-    if (!this.ghost) return
-    const { selectedTile, tileSize } = this.state
-    if (!selectedTile) {
-      this.ghost.visible = false
-      return
-    }
-    const loaded = this.scene.tilesets.get(selectedTile.tilesetId)
-    if (!loaded || selectedTile.tileIndex >= loaded.textures.length) {
-      this.ghost.visible = false
-      return
-    }
-    this.ghost.texture = loaded.textures[selectedTile.tileIndex]
-    this.ghost.x = tx * tileSize
-    this.ghost.y = ty * tileSize
-    this.ghost.width = tileSize
-    this.ghost.height = tileSize
-    this.ghost.visible = true
+    if (!this.ghostContainer) return
+    const { selectedRegion, tileSize } = this.state
+
+    const built = buildRegionGhost(this.ghostContainer, selectedRegion, this.state, this.scene)
+    if (!built) return
+
+    this.ghostContainer.x = tx * tileSize
+    this.ghostContainer.y = ty * tileSize
+    this.ghostContainer.visible = true
   }
 }

@@ -4,7 +4,8 @@
  */
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { Application } from 'pixi.js'
-import { loadScene, loadTilesetFromBlob, type LoadedScene } from '../../game/editor/sceneLoader'
+import { loadTilesetFromBlob, type LoadedScene } from '../../game/editor/sceneLoader'
+import type { SceneData } from '../../game/editor/types'
 import { EditorViewport } from '../../game/editor/EditorViewport'
 import { EditorState } from '../../game/editor/EditorState'
 import { PanTool } from '../../game/editor/tools/PanTool'
@@ -151,11 +152,11 @@ export function EditorApp({ onExit }: EditorAppProps) {
     refresh()
   }, [createTool, refresh])
 
-  /** 瓦片选择 → 自动切 tile 图层 + 笔刷 */
-  const handleSelectTile = useCallback((tilesetId: string, tileIndex: number) => {
+  /** 瓦片区域选择 → 自动切 tile 图层 + 笔刷 */
+  const handleSelectRegion = useCallback((tilesetId: string, col: number, row: number, cols: number, rows: number) => {
     const es = editorStateRef.current
     if (!es) return
-    es.selectedTile = { tilesetId, tileIndex }
+    es.selectedRegion = { tilesetId, col, row, cols, rows }
 
     // 确保选中 tile 图层
     if (es.activeLayer?.type !== 'tile') {
@@ -230,8 +231,16 @@ export function EditorApp({ onExit }: EditorAppProps) {
         resizeObserver.observe(el)
         resizeObserverRef.current = resizeObserver
 
-        // 加载场景
-        const loadedScene = await loadScene('/maps/office.scene.json')
+        // 空白场景
+        const emptySceneData: SceneData = {
+          width: 96,
+          height: 56,
+          tileSize: 16,
+          tilesets: [],
+          layers: [],
+          zones: [],
+        }
+        const loadedScene: LoadedScene = { data: emptySceneData, tilesets: new Map() }
         if (cancelled) return
 
         setScene(loadedScene)
@@ -580,8 +589,8 @@ export function EditorApp({ onExit }: EditorAppProps) {
             {scene && (
               <TilesetPanel
                 scene={scene}
-                selectedTile={editorState?.selectedTile ?? null}
-                onSelectTile={handleSelectTile}
+                selectedRegion={editorState?.selectedRegion ?? null}
+                onSelectRegion={handleSelectRegion}
               />
             )}
           </div>
@@ -650,7 +659,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
             <span>滚轮: 缩放</span>
             <span>V:选择 H:平移 B:笔刷 E:橡皮擦 G:填充 R:矩形 L:直线 C:碰撞 O:对象 Z:区域</span>
             {editorState && <span>图层: {editorState.activeLayer?.name ?? '-'}</span>}
-            {editorState?.selectedTile && <span>瓦片: {editorState.selectedTile.tilesetId}#{editorState.selectedTile.tileIndex}</span>}
+            {editorState?.selectedRegion && <span>瓦片: {editorState.selectedRegion.tilesetId} [{editorState.selectedRegion.cols}x{editorState.selectedRegion.rows}]</span>}
           </div>
         </div>
 
@@ -686,10 +695,10 @@ export function EditorApp({ onExit }: EditorAppProps) {
       </div>
 
       {/* 动画编辑器弹窗 */}
-      {showAnimEditor && scene && editorState?.selectedTile && (
+      {showAnimEditor && scene && editorState?.selectedRegion && (
         <AnimationEditor
           scene={scene}
-          tilesetId={editorState.selectedTile.tilesetId}
+          tilesetId={editorState.selectedRegion.tilesetId}
           onSave={(anim) => {
             if (selectedObject) {
               editorState.updateObject(selectedObject.id, { animation: anim })
