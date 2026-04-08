@@ -137,25 +137,28 @@ function TileGrid({ tileset, scene, selectedRegion, onSelectRegion }: TileGridPr
     return { col, row }
   }, [displayCols, totalRows])
 
-  // 滚轮缩放（以鼠标位置为中心）
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault()
-    const v = viewRef.current
+  // 滚轮缩放 — 用 native listener + { passive: false } 避免 passive 报错
+  useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const rect = canvas.getBoundingClientRect()
-    const mx = e.clientX - rect.left
-    const my = e.clientY - rect.top
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const v = viewRef.current
+      const rect = canvas.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
 
-    const oldZoom = v.zoom
-    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
-    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldZoom * factor))
+      const oldZoom = v.zoom
+      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
+      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldZoom * factor))
 
-    // 以鼠标位置为中心缩放
-    v.panX = mx - (mx - v.panX) * (newZoom / oldZoom)
-    v.panY = my - (my - v.panY) * (newZoom / oldZoom)
-    v.zoom = newZoom
-    bumpView()
+      v.panX = mx - (mx - v.panX) * (newZoom / oldZoom)
+      v.panY = my - (my - v.panY) * (newZoom / oldZoom)
+      v.zoom = newZoom
+      bumpView()
+    }
+    canvas.addEventListener('wheel', onWheel, { passive: false })
+    return () => canvas.removeEventListener('wheel', onWheel)
   }, [bumpView])
 
   // 鼠标按下：中键平移 / 空格+左键平移 / 左键框选
@@ -340,7 +343,6 @@ function TileGrid({ tileset, scene, selectedRegion, onSelectRegion }: TileGridPr
     >
       <canvas
         ref={canvasRef}
-        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}

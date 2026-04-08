@@ -6,7 +6,6 @@
 import {
   Application,
   Container,
-  Graphics,
   RenderTexture,
   Sprite,
   Text,
@@ -116,12 +115,6 @@ export function renderScene(
   const worldW = data.width * data.tileSize
   const worldH = data.height * data.tileSize
   const renderTextures: RenderTexture[] = []
-
-  // 底色背景
-  const bg = new Graphics()
-  bg.rect(0, 0, worldW, worldH).fill(0xd8d0c0)
-  bg.label = 'background'
-  worldContainer.addChild(bg)
 
   // 只渲染瓦片图层
   for (const layer of data.layers) {

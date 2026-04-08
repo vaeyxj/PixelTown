@@ -133,6 +133,9 @@ export class TileEraserTool implements EditorTool {
     const tx = Math.floor(world.x / ts)
     const ty = Math.floor(world.y / ts)
     this.state.eraseTile(tx, ty)
+    // 同时擦除碰撞和对象标记
+    this.state.setCollision(tx, ty, false)
+    this.state.setObject(tx, ty, false)
   }
 
   private updateHighlight(world: WorldPoint): void {

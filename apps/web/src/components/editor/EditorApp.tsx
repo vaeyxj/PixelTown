@@ -151,7 +151,7 @@ export function EditorApp({ onExit }: EditorAppProps) {
         await app.init({
           width: w,
           height: h,
-          background: 0x1a1a2e,
+          background: 0x000000,
           antialias: false,
           resolution: window.devicePixelRatio,
           autoDensity: true,

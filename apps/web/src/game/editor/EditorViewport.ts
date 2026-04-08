@@ -174,29 +174,45 @@ export class EditorViewport {
     g.clear()
 
     const ts = this.tileSize
-    // 自适应网格：缩放较小时隐藏细网格
     if (this.scale < 0.5) return
+
+    // 计算可视区域（世界坐标）
+    const { width: sw, height: sh } = this.app.screen
+    const vx0 = -this.worldContainer.x / this.scale
+    const vy0 = -this.worldContainer.y / this.scale
+    const vx1 = vx0 + sw / this.scale
+    const vy1 = vy0 + sh / this.scale
+
+    // 对齐到网格
+    const startX = Math.floor(vx0 / ts) * ts
+    const startY = Math.floor(vy0 / ts) * ts
+    const endX = Math.ceil(vx1 / ts) * ts
+    const endY = Math.ceil(vy1 / ts) * ts
 
     const alpha = this.scale < 1 ? GRID_ALPHA * 0.5 : GRID_ALPHA
     const color = 0x888888
 
     // 垂直线
-    for (let x = 0; x <= this.worldW; x += ts) {
-      g.moveTo(x, 0).lineTo(x, this.worldH).stroke({ color, alpha, width: 1 / this.scale })
+    for (let x = startX; x <= endX; x += ts) {
+      g.moveTo(x, startY).lineTo(x, endY).stroke({ color, alpha, width: 1 / this.scale })
     }
     // 水平线
-    for (let y = 0; y <= this.worldH; y += ts) {
-      g.moveTo(0, y).lineTo(this.worldW, y).stroke({ color, alpha, width: 1 / this.scale })
+    for (let y = startY; y <= endY; y += ts) {
+      g.moveTo(startX, y).lineTo(endX, y).stroke({ color, alpha, width: 1 / this.scale })
     }
 
     // 粗网格（每 8 格）
     if (this.scale >= 1) {
       const bigStep = ts * 8
-      for (let x = 0; x <= this.worldW; x += bigStep) {
-        g.moveTo(x, 0).lineTo(x, this.worldH).stroke({ color: 0x666666, alpha: alpha * 2, width: 2 / this.scale })
+      const bStartX = Math.floor(vx0 / bigStep) * bigStep
+      const bStartY = Math.floor(vy0 / bigStep) * bigStep
+      const bEndX = Math.ceil(vx1 / bigStep) * bigStep
+      const bEndY = Math.ceil(vy1 / bigStep) * bigStep
+      for (let x = bStartX; x <= bEndX; x += bigStep) {
+        g.moveTo(x, startY).lineTo(x, endY).stroke({ color: 0x666666, alpha: alpha * 2, width: 2 / this.scale })
       }
-      for (let y = 0; y <= this.worldH; y += bigStep) {
-        g.moveTo(0, y).lineTo(this.worldW, y).stroke({ color: 0x666666, alpha: alpha * 2, width: 2 / this.scale })
+      for (let y = bStartY; y <= bEndY; y += bigStep) {
+        g.moveTo(startX, y).lineTo(endX, y).stroke({ color: 0x666666, alpha: alpha * 2, width: 2 / this.scale })
       }
     }
   }
