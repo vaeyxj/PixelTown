@@ -2,22 +2,16 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>PixelTown | AI教育公司的像素办公世界</title>
-    <meta name="description" content="PixelTown — AI 教育公司的像素风数字办公世界，实时展示团队活动与工作状态。" />
-    <meta name="theme-color" content="#060d18" />
-    <!-- Open Graph -->
-    <meta property="og:title" content="PixelTown | AI教育公司的像素办公世界" />
-    <meta property="og:description" content="像素风 RPG 办公世界，展示 AI 教育公司的真实团队状态与活动。" />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="/icons/icon-512.png" />
-    <!-- PWA -->
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PixelTown</title>
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; background: #111; color: #eee; font-family: system-ui, sans-serif; overflow: hidden; }
+      #app { width: 100vw; height: 100vh; }
+      canvas { display: block; image-rendering: pixelated; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
